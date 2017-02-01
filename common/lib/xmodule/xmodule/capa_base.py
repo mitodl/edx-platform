@@ -1174,7 +1174,12 @@ class CapaMixin(CapaFields):
             # without a stack trace
             else:
                 # Translators: {msg} will be replaced with a problem's error message.
-                msg = _(u"Error: {msg}").format(msg=inst.message)
+                try:
+                    # only return the error value of the exception
+                    msg = inst.args[0].split("\\n")[-2].split(": ", 1)[1]
+                except IndexError:
+                    msg = inst.args[0]
+                msg = _(u"Error: {msg}").format(msg=cgi.escape(msg))
 
             return {'success': msg}
 
