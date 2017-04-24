@@ -83,7 +83,7 @@ require.config({
         // end of Annotation tool files
 
         // externally hosted files
-            "mathjax": "//cdn.mathjax.org/mathjax/2.6-latest/MathJax.js?config=TeX-MML-AM_SVG&delayStartupUntil=configured", // jshint ignore:line
+            "mathjax": "//cdnjs.cloudflare.com/ajax/libs/mathjax/2.6.1/MathJax.js?config=TeX-MML-AM_SVG&delayStartupUntil=configured", // jshint ignore:line
         "youtube": [
             // youtube URL does not end in ".js". We add "?noext" to the path so
             // that require.js adds the ".js" to the query component of the URL,
