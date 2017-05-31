@@ -2566,9 +2566,9 @@ def get_student_grade_summary_data(course, get_grades=True):
 
 
 def _do_remote_gradebook(user, course, action, args=None, files=None):
-    '''
-    Perform remote gradebook action.  Returns msg, datatable.
-    '''
+    """
+    Perform remote gradebook action. Returns msg, datatable.
+    """
     rgb = course.remote_gradebook
     if not rgb:
         error_msg = _("No remote gradebook defined in course metadata")
@@ -2616,7 +2616,7 @@ def _do_remote_gradebook(user, course, action, args=None, files=None):
 @require_level('staff')
 def list_remote_assignments(request, course_id):
     """
-    List grade CSV files that are available for download for this course.
+    Returns a datatable of the assignments available in the remote gradebook
     """
     course_id = SlashSeparatedCourseKey.from_deprecated_string(course_id)
     course = get_course_by_id(course_id)
@@ -2633,6 +2633,10 @@ def list_remote_assignments(request, course_id):
 @cache_control(no_cache=True, no_store=True, must_revalidate=True)
 @require_level('staff')
 def list_remote_enrolled_students(request, course_id):
+    """
+    Returns a datatable of students and whether or not there is a match for those students
+    in the remote gradebook
+    """
     course_id = SlashSeparatedCourseKey.from_deprecated_string(course_id)
     course = get_course_by_id(course_id)
     student_data = get_student_grade_summary_data(course, get_grades=False)
@@ -2657,6 +2661,9 @@ def list_remote_enrolled_students(request, course_id):
 @cache_control(no_cache=True, no_store=True, must_revalidate=True)
 @require_level('staff')
 def list_course_assignments(request, course_id):
+    """
+    Returns a datatable of the assignments available for this course
+    """
     course_id = SlashSeparatedCourseKey.from_deprecated_string(course_id)
     course = get_course_by_id(course_id)
     allgrades = get_student_grade_summary_data(course, get_grades=True)
@@ -2670,6 +2677,9 @@ def list_course_assignments(request, course_id):
 
 
 def _get_assignment_grade_datatable(course, assignment_name):
+    """
+    Returns a datatable of students' grades for an assignment in the given course
+    """
     allgrades = get_student_grade_summary_data(course, get_grades=True)
     datatable = {}
     error_msg = None
@@ -2719,6 +2729,9 @@ def create_datatable_csv(csv_file, datatable):
 @cache_control(no_cache=True, no_store=True, must_revalidate=True)
 @require_level('staff')
 def display_assignment_grades(request, course_id):
+    """
+    Returns a datatable of students' grades for an assignment in a course that matches a given course id
+    """
     course_id = SlashSeparatedCourseKey.from_deprecated_string(course_id)
     course = get_course_by_id(course_id)
     error_msg, datatable = _get_assignment_grade_datatable(course, request.POST.get('assignment_name', ''))
@@ -2733,6 +2746,10 @@ def display_assignment_grades(request, course_id):
 @cache_control(no_cache=True, no_store=True, must_revalidate=True)
 @require_level('staff')
 def export_assignment_grades_to_rg(request, course_id):
+    """
+    Exports students' grades for an assignment to the remote gradebook, then returns a
+    datatable of those grades
+    """
     course_id = SlashSeparatedCourseKey.from_deprecated_string(course_id)
     course = get_course_by_id(course_id)
     assignment_name = request.POST.get('assignment_name', '')
@@ -2755,6 +2772,9 @@ def export_assignment_grades_to_rg(request, course_id):
 @cache_control(no_cache=True, no_store=True, must_revalidate=True)
 @require_level('staff')
 def export_assignment_grades_csv(request, course_id):
+    """
+    Creates a CSV of students' grades for an assignment and returns that CSV as an HTTP response
+    """
     course_id = SlashSeparatedCourseKey.from_deprecated_string(course_id)
     course = get_course_by_id(course_id)
     assignment_name = request.GET.get('assignment_name', '')

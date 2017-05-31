@@ -32,8 +32,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: 0.1a\n"
 "Report-Msgid-Bugs-To: openedx-translation@googlegroups.com\n"
-"POT-Creation-Date: 2017-04-11 15:06+0000\n"
-"PO-Revision-Date: 2017-04-11 15:06:29.188134\n"
+"POT-Creation-Date: 2017-05-31 21:11+0000\n"
+"PO-Revision-Date: 2017-05-31 21:11:13.735122\n"
 "Last-Translator: \n"
 "Language-Team: openedx-translation <openedx-translation@googlegroups.com>\n"
 "MIME-Version: 1.0\n"
@@ -6091,6 +6091,80 @@ msgid ""
 msgstr ""
 
 #: lms/djangoapps/instructor/views/api.py
+msgid "ID"
+msgstr ""
+
+#: lms/djangoapps/instructor/views/api.py
+#: lms/djangoapps/instructor/views/tools.py
+#: lms/djangoapps/instructor_task/tasks_helper.py cms/templates/register.html
+#: lms/templates/register-form.html lms/templates/register-shib.html
+#: lms/templates/signup_modal.html lms/templates/sysadmin_dashboard.html
+#: themes/stanford-style/lms/templates/register-form.html
+#: themes/stanford-style/lms/templates/register-shib.html
+msgid "Full Name"
+msgstr ""
+
+#: lms/djangoapps/instructor/views/api.py
+msgid "edX email"
+msgstr ""
+
+#: lms/djangoapps/instructor/views/api.py
+msgid "External email"
+msgstr ""
+
+#: lms/djangoapps/instructor/views/api.py
+msgid "No remote gradebook defined in course metadata"
+msgstr ""
+
+#: lms/djangoapps/instructor/views/api.py
+msgid "No remote gradebook url defined in settings.FEATURES"
+msgstr ""
+
+#: lms/djangoapps/instructor/views/api.py
+msgid "No gradebook name defined in course remote_gradebook metadata"
+msgstr ""
+
+#: lms/djangoapps/instructor/views/api.py
+#, python-brace-format
+msgid "Failed to communicate with gradebook server at {url}"
+msgstr ""
+
+#: lms/djangoapps/instructor/views/api.py
+#, python-brace-format
+msgid "Error: {err}"
+msgstr ""
+
+#: lms/djangoapps/instructor/views/api.py
+msgid "Remote Gradebook Assignments"
+msgstr ""
+
+#: lms/djangoapps/instructor/views/api.py
+msgid "Enrolled Students Matching Remote Gradebook"
+msgstr ""
+
+#: lms/djangoapps/instructor/views/api.py
+msgid "Assignment Name"
+msgstr ""
+
+#: lms/djangoapps/instructor/views/api.py
+msgid "Assignments Available for this Course"
+msgstr ""
+
+#: lms/djangoapps/instructor/views/api.py
+msgid "No assignment name given"
+msgstr ""
+
+#: lms/djangoapps/instructor/views/api.py
+#, python-brace-format
+msgid "Invalid assignment name '{name}'"
+msgstr ""
+
+#: lms/djangoapps/instructor/views/api.py
+#, python-brace-format
+msgid "Grades for assignment \"{name}\""
+msgstr ""
+
+#: lms/djangoapps/instructor/views/api.py
 #, python-brace-format
 msgid "Successfully changed due date for student {0} for {1} to {2}"
 msgstr ""
@@ -6352,6 +6426,10 @@ msgid "Data Download"
 msgstr ""
 
 #: lms/djangoapps/instructor/views/instructor_dashboard.py
+msgid "Export Grades"
+msgstr ""
+
+#: lms/djangoapps/instructor/views/instructor_dashboard.py
 msgid "Analytics"
 msgstr ""
 
@@ -6438,15 +6516,6 @@ msgstr ""
 
 #: lms/djangoapps/instructor/views/tools.py
 msgid "No due date extension is set for that student and unit."
-msgstr ""
-
-#: lms/djangoapps/instructor/views/tools.py
-#: lms/djangoapps/instructor_task/tasks_helper.py cms/templates/register.html
-#: lms/templates/register-form.html lms/templates/register-shib.html
-#: lms/templates/signup_modal.html lms/templates/sysadmin_dashboard.html
-#: themes/stanford-style/lms/templates/register-form.html
-#: themes/stanford-style/lms/templates/register-shib.html
-msgid "Full Name"
 msgstr ""
 
 #: lms/djangoapps/instructor/views/tools.py
@@ -15478,6 +15547,24 @@ msgstr ""
 
 #: lms/templates/instructor/instructor_dashboard_2/generate_registarion_codes_modal.html
 msgid "Send me a copy of the invoice"
+msgstr ""
+
+#: lms/templates/instructor/instructor_dashboard_2/grade_export.html
+msgid "Export grades to remote gradebook"
+msgstr ""
+
+#: lms/templates/instructor/instructor_dashboard_2/grade_export.html
+msgid ""
+"The assignments defined for this course should match the ones stored in the "
+"gradebook, for this to work properly!"
+msgstr ""
+
+#: lms/templates/instructor/instructor_dashboard_2/grade_export.html
+msgid "Gradebook name:"
+msgstr ""
+
+#: lms/templates/instructor/instructor_dashboard_2/grade_export.html
+msgid "Assignment name:"
 msgstr ""
 
 #: lms/templates/instructor/instructor_dashboard_2/instructor_analytics.html
