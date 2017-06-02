@@ -1234,8 +1234,8 @@ class CapaMixin(ScorableXBlockMixin, CapaFields):
             else:
                 # Translators: {msg} will be replaced with a problem's error message.
                 try:
-                    # only return the error value of the exception 
-                    message = inst.message.split("\\n")[-2].split(": ",1)[1]
+                    # only return the error value of the exception
+                    message = inst.message.split("\\n")[-2].split(": ", 1)[1]
                     msg = cgi.escape(message)
                 except IndexError:
                     msg = inst.message
