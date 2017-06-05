@@ -6125,6 +6125,10 @@ msgid "Data Download"
 msgstr ""
 
 #: lms/djangoapps/instructor/views/instructor_dashboard.py
+msgid "Export Grades"
+msgstr ""
+
+#: lms/djangoapps/instructor/views/instructor_dashboard.py
 msgid "Analytics"
 msgstr ""
 
@@ -6200,15 +6204,6 @@ msgstr ""
 
 #: lms/djangoapps/instructor/views/tools.py
 msgid "No due date extension is set for that student and unit."
-msgstr ""
-
-#: lms/djangoapps/instructor/views/tools.py
-#: lms/djangoapps/instructor_task/tasks_helper.py cms/templates/register.html
-#: lms/templates/register-form.html lms/templates/register-shib.html
-#: lms/templates/signup_modal.html lms/templates/sysadmin_dashboard.html
-#: themes/stanford-style/lms/templates/register-form.html
-#: themes/stanford-style/lms/templates/register-shib.html
-msgid "Full Name"
 msgstr ""
 
 #: lms/djangoapps/instructor/views/tools.py
@@ -15035,6 +15030,24 @@ msgstr ""
 
 #: lms/templates/instructor/instructor_dashboard_2/generate_registarion_codes_modal.html
 msgid "Send me a copy of the invoice"
+msgstr ""
+
+#: lms/templates/instructor/instructor_dashboard_2/grade_export.html
+msgid "Export grades to remote gradebook"
+msgstr ""
+
+#: lms/templates/instructor/instructor_dashboard_2/grade_export.html
+msgid ""
+"The assignments defined for this course should match the ones stored in the "
+"gradebook, for this to work properly!"
+msgstr ""
+
+#: lms/templates/instructor/instructor_dashboard_2/grade_export.html
+msgid "Gradebook name:"
+msgstr ""
+
+#: lms/templates/instructor/instructor_dashboard_2/grade_export.html
+msgid "Assignment name:"
 msgstr ""
 
 #: lms/templates/instructor/instructor_dashboard_2/instructor_analytics.html
