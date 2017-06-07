@@ -84,6 +84,11 @@
             });
         }
 
+        InstructorDashboardGradeExport.prototype.onClickTitle = function() {
+            this.$errors.empty();
+            this.$results.empty();
+        };
+
         return InstructorDashboardGradeExport;
     }());
 
