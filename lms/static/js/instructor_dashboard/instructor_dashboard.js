@@ -210,9 +210,13 @@ such that the value can be defined later than this assignment (file load order).
             var $element, constructor;
             constructor = _arg.constructor;
             $element = _arg.$element;
-            return plantTimeout(0, sectionsHaveLoaded.waitFor(function() {
-                return new constructor($element);
-            }));
+            if ($element.length > 0) {
+                return plantTimeout(0, sectionsHaveLoaded.waitFor(function () {
+                    return new constructor($element);
+                }));
+            } else {
+                return null;
+            }
         });
     };
 }).call(this);

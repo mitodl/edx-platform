@@ -40,7 +40,7 @@ from util.file import (
 from util.json_request import JsonResponse, JsonResponseBadRequest
 from util.views import require_global_staff
 from lms.djangoapps.instructor.views.instructor_task_helpers import extract_email_features, extract_task_features
-from lms.djangoapps.grades.new.course_grade_factory import CourseGradeFactory
+from lms.djangoapps.grades.new.course_grade import CourseGradeFactory
 
 from courseware.access import has_access
 from courseware.courses import get_course_with_access, get_course_by_id
