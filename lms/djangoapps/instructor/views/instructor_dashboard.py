@@ -127,8 +127,8 @@ def instructor_dashboard_2(request, course_id):
         _section_data_download(course, access),
     ]
 
-    if settings.FEATURES.get('ENABLE_INSTRUCTOR_GRADE_EXPORT', False):
-        sections.append(_section_grade_export(course))
+    if settings.FEATURES.get('ENABLE_INSTRUCTOR_REMOTE_GRADEBOOK_CONTROLS', False):
+        sections.append(_section_remote_gradebook(course))
 
     analytics_dashboard_message = None
     if show_analytics_dashboard_message(course_key):
@@ -603,10 +603,10 @@ def _section_data_download(course, access):
     return section_data
 
 
-def _section_grade_export(course):
+def _section_remote_gradebook(course):
     section_data = {
-        'section_key': 'grade_export',
-        'section_display_name': _('Export Grades'),
+        'section_key': 'remote_gradebook',
+        'section_display_name': _('Remote Gradebook'),
         'course': course,
         'list_remote_assignments_url': reverse(
             'list_remote_assignments', kwargs={'course_id': unicode(course.id)}

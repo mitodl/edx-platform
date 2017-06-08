@@ -213,7 +213,7 @@ FEATURES = {
         "certificate_status"
     ],
 
-    'ENABLE_INSTRUCTOR_GRADE_EXPORT': False,
+    'ENABLE_INSTRUCTOR_REMOTE_GRADEBOOK_CONTROLS': False,
 
     # Turn off account locking if failed login attempts exceeds a limit
     'ENABLE_MAX_FAILED_LOGIN_ATTEMPTS': True,

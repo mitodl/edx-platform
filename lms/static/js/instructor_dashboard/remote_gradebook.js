@@ -2,11 +2,11 @@
 
 (function($, _) {
     'use strict';
-    var GradeExport;
+    var RemoteGradebook;
 
-    GradeExport = (function() {
-        function InstructorDashboardGradeExport($section) {
-            var gradeExportObj = this;
+    RemoteGradebook = (function() {
+        function InstructorDashboardRemoteGradebook($section) {
+            var remoteGradebookObj = this;
             this.$section = $section;
             this.$section.data('wrapper', this);
             this.$results = this.$section.find("#results");
@@ -23,19 +23,19 @@
             this.datatableTemplate = _.template($('#html-datatable-tpl').text());
 
             this.showResults = function(resultHTML) {
-                gradeExportObj.$results.html(resultHTML);
-                gradeExportObj.$errors.empty();
+                remoteGradebookObj.$results.html(resultHTML);
+                remoteGradebookObj.$errors.empty();
             };
 
             this.showErrors = function(errorHTML) {
-                gradeExportObj.$results.empty();
-                gradeExportObj.$errors.html(errorHTML);
+                remoteGradebookObj.$results.empty();
+                remoteGradebookObj.$errors.html(errorHTML);
             };
 
             function addDatatableClickHandler($el, createRequestData) {
                 $el.click(function() {
                     var url = $el.data('endpoint');
-                    gradeExportObj.$loading.removeClass('hidden');
+                    remoteGradebookObj.$loading.removeClass('hidden');
                     return $.ajax({
                         type: 'POST',
                         dataType: 'json',
@@ -44,25 +44,25 @@
                     })
                     .done(function(data) {
                         if (_.isEmpty(data)) {
-                            gradeExportObj.showErrors('No results.');
+                            remoteGradebookObj.showErrors('No results.');
                         } else if (_.isEmpty(data.errors)) {
-                            gradeExportObj.showResults(gradeExportObj.datatableTemplate(data.datatable));
+                            remoteGradebookObj.showResults(remoteGradebookObj.datatableTemplate(data.datatable));
                         } else {
-                            gradeExportObj.showErrors(data.errors);
+                            remoteGradebookObj.showErrors(data.errors);
                         }
                     })
                     .fail(function() {
-                        gradeExportObj.showErrors('Request failed.');
+                        remoteGradebookObj.showErrors('Request failed.');
                     })
                     .always(function() {
-                        gradeExportObj.$loading.addClass('hidden');
+                        remoteGradebookObj.$loading.addClass('hidden');
                     });
                 });
             }
 
             function getAssignmentNameForRequest() {
                 return {
-                    assignment_name: gradeExportObj.$assignment_name_input.val()
+                    assignment_name: remoteGradebookObj.$assignment_name_input.val()
                 };
             }
 
@@ -73,23 +73,23 @@
             addDatatableClickHandler(this.$export_assignment_grades_to_rg_btn, getAssignmentNameForRequest);
 
             this.$export_assignment_grades_csv_btn.click(function() {
-                var assignmentName = encodeURIComponent(gradeExportObj.$assignment_name_input.val());
+                var assignmentName = encodeURIComponent(remoteGradebookObj.$assignment_name_input.val());
                 if (assignmentName) {
-                    location.href = gradeExportObj.$export_assignment_grades_csv_btn.data('endpoint')
+                    location.href = remoteGradebookObj.$export_assignment_grades_csv_btn.data('endpoint')
                         + '?assignment_name='
                         + assignmentName;
                 } else {
-                    gradeExportObj.showErrors('Assignment name must be specified.');
+                    remoteGradebookObj.showErrors('Assignment name must be specified.');
                 }
             });
         }
 
-        InstructorDashboardGradeExport.prototype.onClickTitle = function() {
+        InstructorDashboardRemoteGradebook.prototype.onClickTitle = function() {
             this.$errors.empty();
             this.$results.empty();
         };
 
-        return InstructorDashboardGradeExport;
+        return InstructorDashboardRemoteGradebook;
     }());
 
     _.defaults(window, {
@@ -101,7 +101,7 @@
     });
 
     _.defaults(window.InstructorDashboard.sections, {
-        GradeExport: GradeExport
+        RemoteGradebook: RemoteGradebook
     });
 
 }).call(this, $, _);
