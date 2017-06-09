@@ -608,11 +608,14 @@ def _section_remote_gradebook(course):
         'section_key': 'remote_gradebook',
         'section_display_name': _('Remote Gradebook'),
         'course': course,
-        'list_remote_assignments_url': reverse(
-            'list_remote_assignments', kwargs={'course_id': unicode(course.id)}
-        ),
         'list_remote_enrolled_students_url': reverse(
             'list_remote_enrolled_students', kwargs={'course_id': unicode(course.id)}
+        ),
+        'list_remote_students_in_section_url': reverse(
+            'list_remote_students_in_section', kwargs={'course_id': unicode(course.id)}
+        ),
+        'list_remote_assignments_url': reverse(
+            'list_remote_assignments', kwargs={'course_id': unicode(course.id)}
         ),
         'list_course_assignments_url': reverse(
             'list_course_assignments', kwargs={'course_id': unicode(course.id)}

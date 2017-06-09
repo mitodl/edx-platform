@@ -1345,6 +1345,10 @@
 // view - export grades
 // --------------------
 .instructor-dashboard-wrapper-2 section.idash-section#remote_gradebook{
+  p.gradebook-name {
+    margin: 20px 0;
+  }
+
   table.stat_table {
     font-family: verdana, arial, sans-serif;
     font-size: 11px;

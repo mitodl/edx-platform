@@ -2564,18 +2564,18 @@ def get_student_grade_summary_data(course, get_grades=True):
     return datatable
 
 
-def _do_remote_gradebook(user, course, action, args=None, files=None):
+def _do_remote_gradebook(user, course, action, **kwargs):
     """
     Perform remote gradebook action. Returns msg, datatable.
     """
-    rgb = course.remote_gradebook
-    if not rgb:
-        error_msg = _("No remote gradebook defined in course metadata")
-        return error_msg, {}
-
     rgburl = settings.FEATURES.get('REMOTE_GRADEBOOK_URL', '')
     if not rgburl:
         error_msg = _("No remote gradebook url defined in settings.FEATURES")
+        return error_msg, {}
+
+    rgb = course.remote_gradebook
+    if not rgb:
+        error_msg = _("No remote gradebook defined in course metadata")
         return error_msg, {}
 
     rgbname = rgb.get('name', '')
@@ -2583,30 +2583,72 @@ def _do_remote_gradebook(user, course, action, args=None, files=None):
         error_msg = _("No gradebook name defined in course remote_gradebook metadata")
         return error_msg, {}
 
-    if args is None:
-        args = {}
-    data = dict(submit=action, gradebook=rgbname, user=user.email)
-    data.update(args)
-
+    data = dict(submit=action, gradebook=rgbname, user=user.email, **kwargs)
     try:
-        resp = requests.post(rgburl, data=data, verify=False, files=files)
-        retdict = json.loads(resp.content)
+        resp = requests.post(rgburl, data=data, verify=False)
     except Exception as err:  # pylint: disable=broad-except
         error_msg = _("Failed to communicate with gradebook server at {url}").format(url=rgburl) + "<br/>"
         error_msg += _("Error: {err}").format(err=err)
         error_msg += "<br/>resp={resp}".format(resp=resp.content)
         error_msg += "<br/>data={data}".format(data=data)
         return error_msg, {}
+    if not resp.ok:
+        return resp.content, {}
 
+    retdict = json.loads(resp.content)
     retdata = retdict['data']  # a list of dicts
-    if retdata:
+    if retdata and retdata != [{}]:
         datatable = {'header': retdata[0].keys()}
         datatable['data'] = [x.values() for x in retdata]
         datatable['retdata'] = retdata
-    else:
-        datatable = {}
+        return None, datatable
+    return "Remote gradebook returned no results for this action ({}).".format(action), {}
 
-    return None, datatable
+
+@require_POST
+@ensure_csrf_cookie
+@cache_control(no_cache=True, no_store=True, must_revalidate=True)
+@require_level('staff')
+def list_matching_remote_enrolled_students(request, course_id):
+    """
+    Returns a datatable of students and whether or not there is a match for those students
+    in the remote gradebook
+    """
+    course_id = SlashSeparatedCourseKey.from_deprecated_string(course_id)
+    course = get_course_by_id(course_id)
+    error_msg, rg_student_data = _do_remote_gradebook(request.user, course, 'get-membership')
+    datatable = {}
+    if not error_msg:
+        student_data = get_student_grade_summary_data(course, get_grades=False)
+        datatable = {'header': ['Student  email', 'Match?']}
+        rg_students = [x['email'] for x in rg_student_data['retdata']]
+
+        has_match = lambda student: 'yes' if student.email in rg_students else 'No'
+
+        datatable['data'] = [[student.email, has_match(student)] for student in student_data['students']]
+        datatable['title'] = _('Enrolled Students Matching Remote Gradebook')
+    return JsonResponse({
+        'errors': error_msg,
+        'datatable': datatable
+    })
+
+
+@require_POST
+@ensure_csrf_cookie
+@cache_control(no_cache=True, no_store=True, must_revalidate=True)
+@require_level('staff')
+def list_remote_students_in_section(request, course_id):
+    """
+    """
+    section_name = request.POST.get('section_name', '')
+    course_id = SlashSeparatedCourseKey.from_deprecated_string(course_id)
+    course = get_course_by_id(course_id)
+    error_msg, datatable = _do_remote_gradebook(request.user, course, 'get-membership', section=section_name)
+    datatable['title'] = _('Enrolled Students in Section in Remote Gradebook')
+    return JsonResponse({
+        'errors': error_msg,
+        'datatable': datatable
+    })
 
 
 @require_POST
@@ -2624,34 +2666,6 @@ def list_remote_assignments(request, course_id):
     return JsonResponse({
         'errors': error_msg,
         'datatable': datatable,
-    })
-
-
-@require_POST
-@ensure_csrf_cookie
-@cache_control(no_cache=True, no_store=True, must_revalidate=True)
-@require_level('staff')
-def list_remote_enrolled_students(request, course_id):
-    """
-    Returns a datatable of students and whether or not there is a match for those students
-    in the remote gradebook
-    """
-    course_id = SlashSeparatedCourseKey.from_deprecated_string(course_id)
-    course = get_course_by_id(course_id)
-    student_data = get_student_grade_summary_data(course, get_grades=False)
-    error_msg, rg_student_data = _do_remote_gradebook(request.user, course, 'get-membership')
-    datatable = {'header': ['Student  email', 'Match?']}
-    rg_students = [x['email'] for x in rg_student_data['retdata']]
-
-    def domatch(student):
-        """Returns 'yes' if student is pressent in the remote gradebook student list, else returns 'No'"""
-        return 'yes' if student.email in rg_students else 'No'
-
-    datatable['data'] = [[x.email, domatch(x)] for x in student_data['students']]
-    datatable['title'] = _('Enrolled Students Matching Remote Gradebook')
-    return JsonResponse({
-        'errors': error_msg,
-        'datatable': datatable
     })
 
 

@@ -12,9 +12,11 @@
             this.$results = this.$section.find("#results");
             this.$errors = this.$section.find("#errors");
             this.$loading = this.$section.find(".loading");
+            this.$section_name_input = this.$section.find("input[name='section-name']");
             this.$assignment_name_input = this.$section.find("input[name='assignment-name']");
-            this.$list_remote_assign_btn = this.$section.find("input[name='list-remote-assignments']");
             this.$list_remote_enrolled_students_btn = this.$section.find("input[name='list-remote-enrolled-students']");
+            this.$list_remote_students_in_section_btn = this.$section.find("input[name='list-remote-students-in-section']");
+            this.$list_remote_assign_btn = this.$section.find("input[name='list-remote-assignments']");
             this.$list_course_assignments_btn = this.$section.find("input[name='list-course-assignments']");
             this.$display_assignment_grades_btn = this.$section.find("input[name='display-assignment-grades']");
             this.$export_assignment_grades_to_rg_btn = this.$section.find("input[name='export-assignment-grades-to-rg']");
@@ -66,8 +68,15 @@
                 };
             }
 
-            addDatatableClickHandler(this.$list_remote_assign_btn);
+            function getSectionNameForRequest() {
+                return {
+                    section_name: remoteGradebookObj.$section_name_input.val()
+                };
+            }
+
             addDatatableClickHandler(this.$list_remote_enrolled_students_btn);
+            addDatatableClickHandler(this.$list_remote_students_in_section_btn, getSectionNameForRequest);
+            addDatatableClickHandler(this.$list_remote_assign_btn);
             addDatatableClickHandler(this.$list_course_assignments_btn);
             addDatatableClickHandler(this.$display_assignment_grades_btn, getAssignmentNameForRequest);
             addDatatableClickHandler(this.$export_assignment_grades_to_rg_btn, getAssignmentNameForRequest);
