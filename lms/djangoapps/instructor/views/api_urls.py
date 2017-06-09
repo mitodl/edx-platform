@@ -97,6 +97,8 @@ urlpatterns = patterns(
         'lms.djangoapps.instructor.views.api.problem_grade_report', name="problem_grade_report"),
 
     # Remote gradebook...
+    url(r'^get_remote_gradebook_sections',
+        'lms.djangoapps.instructor.views.api.get_remote_gradebook_sections', name="get_remote_gradebook_sections"),
     url(r'^list_remote_enrolled_students',
         'lms.djangoapps.instructor.views.api.list_matching_remote_enrolled_students', name="list_remote_enrolled_students"),
     url(r'^list_remote_students_in_section',

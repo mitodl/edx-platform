@@ -2609,6 +2609,24 @@ def _do_remote_gradebook(user, course, action, **kwargs):
 @ensure_csrf_cookie
 @cache_control(no_cache=True, no_store=True, must_revalidate=True)
 @require_level('staff')
+def get_remote_gradebook_sections(request, course_id):
+    """
+    Returns a datatable of students and whether or not there is a match for those students
+    in the remote gradebook
+    """
+    course_id = SlashSeparatedCourseKey.from_deprecated_string(course_id)
+    course = get_course_by_id(course_id)
+    error_msg, datatable = _do_remote_gradebook(request.user, course, 'get-sections')
+    return JsonResponse({
+        'errors': error_msg,
+        'sections': [datarow[0] for datarow in datatable['data']]
+    })
+
+
+@require_POST
+@ensure_csrf_cookie
+@cache_control(no_cache=True, no_store=True, must_revalidate=True)
+@require_level('staff')
 def list_matching_remote_enrolled_students(request, course_id):
     """
     Returns a datatable of students and whether or not there is a match for those students

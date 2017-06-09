@@ -16,7 +16,9 @@ from openedx.core.djangolib.markup import HTML, Text
     <input type="button" name="list-remote-enrolled-students" value="List enrolled students matching remote gradebook" data-endpoint="${ section_data['list_remote_enrolled_students_url'] }">
   </p>
   <p>
-    ${_("Section name:")} <input type="text" name="section-name" size=40 />
+    <label for="section-name">${_("Section name:")}</label>
+    <select name="section-name" id="section-name" disabled="disabled" data-endpoint="${ section_data['get_remote_gradebook_sections_url'] }">
+    </select>
   </p>
   <p>
     <input type="button" name="list-remote-students-in-section" value="List students in section in remote gradebook" data-endpoint="${ section_data['list_remote_students_in_section_url'] }">
@@ -33,7 +35,8 @@ from openedx.core.djangolib.markup import HTML, Text
     <input type="button" name="list-course-assignments" value="List assignments available for this course" data-endpoint="${ section_data['list_course_assignments_url'] }">
   </p>
   <p>
-    ${_("Assignment name:")} <input type="text" name="assignment-name" size=40 />
+    <label for="assignment-name">${_("Assignment name:")}</label>
+    <input type="text" name="assignment-name" id="assignment-name" size=40 />
   </p>
   <p>
     <input type="button" name="display-assignment-grades" value="Display grades for assignment" data-endpoint="${ section_data['display_assignment_grades_url'] }">
@@ -43,9 +46,6 @@ from openedx.core.djangolib.markup import HTML, Text
 
   <hr>
 
-  <p class="loading hidden">
-    <span class="icon fa fa-spinner fa-spin fa-large" aria-hidden="true"></span>
-  </p>
-  <div id="errors"></div>
+  <div id="errors" class="errors"></div>
   <div id="results"></div>
 </section>

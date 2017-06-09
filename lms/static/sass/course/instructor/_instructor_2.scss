@@ -1364,6 +1364,7 @@
       border-color: #666666;
       background-color: #dedede;
     }
+
     td {
       border-width: 1px;
       padding: 8px;
@@ -1377,7 +1378,7 @@
     padding: 10px 0;
   }
 
-  #errors {
+  .errors {
     color: rgb(255, 0, 0);
   }
 }

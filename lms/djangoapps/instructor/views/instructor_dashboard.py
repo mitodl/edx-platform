@@ -608,6 +608,9 @@ def _section_remote_gradebook(course):
         'section_key': 'remote_gradebook',
         'section_display_name': _('Remote Gradebook'),
         'course': course,
+        'get_remote_gradebook_sections_url': reverse(
+            'get_remote_gradebook_sections', kwargs={'course_id': unicode(course.id)}
+        ),
         'list_remote_enrolled_students_url': reverse(
             'list_remote_enrolled_students', kwargs={'course_id': unicode(course.id)}
         ),
