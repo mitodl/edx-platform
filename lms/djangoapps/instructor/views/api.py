@@ -40,6 +40,7 @@ from util.file import (
 from util.json_request import JsonResponse, JsonResponseBadRequest
 from util.views import require_global_staff
 from lms.djangoapps.instructor.views.instructor_task_helpers import extract_email_features, extract_task_features
+from lms.djangoapps.grades.context import grading_context_for_course
 from lms.djangoapps.grades.new.course_grade import CourseGradeFactory
 
 from courseware.access import has_access
@@ -108,6 +109,7 @@ from .tools import (
     parse_datetime,
     set_due_date_extension,
     strip_if_string,
+    get_assignment_type_label,
 )
 from opaque_keys.edx.keys import CourseKey, UsageKey
 from opaque_keys.edx.locations import SlashSeparatedCourseKey
@@ -2564,6 +2566,22 @@ def get_student_grade_summary_data(course, get_grades=True):
     return datatable
 
 
+def get_short_labeled_course_assignments(course):
+    course_key = course.id
+    grading_context = grading_context_for_course(course_key)
+    graded_item_labels = []
+    for graded_item_type, graded_items in grading_context['all_graded_subsections_by_type'].iteritems():
+        label = get_assignment_type_label(course, graded_item_type)
+        if len(graded_items) == 1:
+            graded_item_labels.append(label)
+        elif len(graded_items) > 1:
+            for i, graded_item in enumerate(graded_items, start=1):
+                graded_item_labels.append(
+                    u"{short_label} {index:02d}".format(short_label=label, index=i)
+                )
+    return graded_item_labels
+
+
 def _do_remote_gradebook(user, course, action, **kwargs):
     """
     Perform remote gradebook action. Returns msg, datatable.
@@ -2697,10 +2715,9 @@ def list_course_assignments(request, course_id):
     """
     course_id = SlashSeparatedCourseKey.from_deprecated_string(course_id)
     course = get_course_by_id(course_id)
-    allgrades = get_student_grade_summary_data(course, get_grades=True)
-    assignments = [[x] for x in allgrades['assignments']]
+    assignment_names = get_short_labeled_course_assignments(course)
     datatable = {'header': [_('Assignment Name')]}
-    datatable['data'] = assignments
+    datatable['data'] = [[name] for name in assignment_names]
     datatable['title'] = _('Assignments Available for this Course')
     return JsonResponse({
         'datatable': datatable
