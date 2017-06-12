@@ -1222,7 +1222,7 @@ class CapaMixin(ScorableXBlockMixin, CapaFields):
             # Save the user's state before failing
             self.set_state_from_lcp()
             self.set_score(self.score_from_lcp())
-
+           
             # If the user is a staff member, include
             # the full exception, including traceback,
             # in the response
@@ -1234,7 +1234,7 @@ class CapaMixin(ScorableXBlockMixin, CapaFields):
             else:
                 try:
                     # only return the error value of the exception
-                    message = inst.message.split("\\n")[-2].split(": ", 1)[1]
+                    message = inst.args[0].split("\\n")[-2].split(": ", 1)[1]
                     msg = cgi.escape(message)
                 except IndexError:
                     msg = inst.message
