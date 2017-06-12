@@ -1232,12 +1232,12 @@ class CapaMixin(ScorableXBlockMixin, CapaFields):
             # Otherwise, display just an error message,
             # without a stack trace
             else:
+                escaped_message = cgi.escape(inst.args[0])
                 try:
                     # only return the error value of the exception
-                    message = inst.args[0].split("\\n")[-2].split(": ", 1)[1]
-                    msg = cgi.escape(message)
+                    msg = escaped_message.split("\\n")[-2].split(": ", 1)[1]
                 except IndexError:
-                    msg = inst.message
+                    msg = escaped_message
 
             return {'success': msg}
 
