@@ -1222,7 +1222,7 @@ class CapaMixin(ScorableXBlockMixin, CapaFields):
             # Save the user's state before failing
             self.set_state_from_lcp()
             self.set_score(self.score_from_lcp())
-           
+
             # If the user is a staff member, include
             # the full exception, including traceback,
             # in the response
