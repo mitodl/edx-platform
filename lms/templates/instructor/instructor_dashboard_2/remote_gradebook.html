@@ -32,11 +32,11 @@ from openedx.core.djangolib.markup import HTML, Text
   </p>
   <p>
     <input type="button" name="list-remote-assignments" value="List assignments available in remote gradebook" data-endpoint="${ section_data['list_remote_assignments_url'] }">
-    <input type="button" name="list-course-assignments" value="List assignments available for this course" data-endpoint="${ section_data['list_course_assignments_url'] }">
   </p>
   <p>
     <label for="assignment-name">${_("Assignment name:")}</label>
-    <input type="text" name="assignment-name" id="assignment-name" size=40 />
+    <select name="assignment-name" id="assignment-name" disabled="disabled" data-endpoint="${ section_data['get_assignment_names_url'] }">
+    </select>
   </p>
   <p>
     <input type="button" name="display-assignment-grades" value="Display grades for assignment" data-endpoint="${ section_data['display_assignment_grades_url'] }">

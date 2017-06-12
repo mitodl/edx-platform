@@ -13,7 +13,7 @@
             this.$errors = this.$section.find("#errors");
             this.$loading = this.$section.find(".loading");
             this.$section_name_select = this.$section.find("#section-name");
-            this.$assignment_name_input = this.$section.find("#assignment-name");
+            this.$assignment_name_select = this.$section.find("#assignment-name");
             this.$list_remote_enrolled_students_btn = this.$section.find("input[name='list-remote-enrolled-students']");
             this.$list_remote_students_in_section_btn = this.$section.find("input[name='list-remote-students-in-section']");
             this.$list_remote_assign_btn = this.$section.find("input[name='list-remote-assignments']");
@@ -48,10 +48,9 @@
                 return spinnerContainer;
             }
 
-            function loadSectionNameOptions() {
-                var $el = remoteGradebookObj.$section_name_select;
+            function loadSelectBoxOptions($el) {
                 var url = $el.data('endpoint');
-                var spinner = createLoadingSpinner(gettext(' Loading section names...'));
+                var spinner = createLoadingSpinner(gettext(' Loading options...'));
                 spinner
                     .css({'display': 'inline-block', 'padding-left': '10px'})
                     .insertAfter($el);
@@ -61,20 +60,20 @@
                     dataType: 'json',
                     url: url
                 })
-                .done(function(data) {
-                    if (_.isEmpty(data.errors)) {
-                        $.each(data.sections, function (index, section) {
+                .done(function(respData) {
+                    if (_.isEmpty(respData.errors)) {
+                        $.each(respData.data, function (index, optionValue) {
                             $el.append(
                                 $('<option></option>')
-                                    .attr('value', section)
-                                    .text(section)
+                                    .attr('value', optionValue)
+                                    .text(optionValue)
                             );
                         });
                         $el.prop('disabled', false);
                     } else {
                         $('<span></span>')
                             .addClass('errors')
-                            .append(data.errors)
+                            .append(respData.errors)
                             .insertAfter($el);
                     }
                 })
@@ -123,7 +122,7 @@
 
             function getAssignmentNameForRequest() {
                 return {
-                    assignment_name: remoteGradebookObj.$assignment_name_input.val()
+                    assignment_name: remoteGradebookObj.$assignment_name_select.val()
                 };
             }
 
@@ -141,7 +140,7 @@
             addDatatableClickHandler(this.$export_assignment_grades_to_rg_btn, getAssignmentNameForRequest);
 
             this.$export_assignment_grades_csv_btn.click(function() {
-                var assignmentName = encodeURIComponent(remoteGradebookObj.$assignment_name_input.val());
+                var assignmentName = encodeURIComponent(remoteGradebookObj.$assignment_name_select.val());
                 if (assignmentName) {
                     location.href = remoteGradebookObj.$export_assignment_grades_csv_btn.data('endpoint')
                         + '?assignment_name='
@@ -151,7 +150,8 @@
                 }
             });
 
-            loadSectionNameOptions();
+            loadSelectBoxOptions(remoteGradebookObj.$section_name_select);
+            loadSelectBoxOptions(remoteGradebookObj.$assignment_name_select);
         }
 
         InstructorDashboardRemoteGradebook.prototype.onClickTitle = function() {

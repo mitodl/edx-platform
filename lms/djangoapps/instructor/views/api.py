@@ -2637,7 +2637,7 @@ def get_remote_gradebook_sections(request, course_id):
     error_msg, datatable = _do_remote_gradebook(request.user, course, 'get-sections')
     return JsonResponse({
         'errors': error_msg,
-        'sections': [datarow[0] for datarow in datatable['data']]
+        'data': [datarow[0] for datarow in datatable['data']]
     })
 
 
@@ -2691,6 +2691,22 @@ def list_remote_students_in_section(request, course_id):
 @ensure_csrf_cookie
 @cache_control(no_cache=True, no_store=True, must_revalidate=True)
 @require_level('staff')
+def get_assignment_names(request, course_id):
+    """
+    Returns a datatable of the assignments available for this course
+    """
+    course_id = SlashSeparatedCourseKey.from_deprecated_string(course_id)
+    course = get_course_by_id(course_id)
+    assignment_names = get_short_labeled_course_assignments(course)
+    return JsonResponse({
+        'data': assignment_names
+    })
+
+
+@require_POST
+@ensure_csrf_cookie
+@cache_control(no_cache=True, no_store=True, must_revalidate=True)
+@require_level('staff')
 def list_remote_assignments(request, course_id):
     """
     Returns a datatable of the assignments available in the remote gradebook
@@ -2702,25 +2718,6 @@ def list_remote_assignments(request, course_id):
     return JsonResponse({
         'errors': error_msg,
         'datatable': datatable,
-    })
-
-
-@require_POST
-@ensure_csrf_cookie
-@cache_control(no_cache=True, no_store=True, must_revalidate=True)
-@require_level('staff')
-def list_course_assignments(request, course_id):
-    """
-    Returns a datatable of the assignments available for this course
-    """
-    course_id = SlashSeparatedCourseKey.from_deprecated_string(course_id)
-    course = get_course_by_id(course_id)
-    assignment_names = get_short_labeled_course_assignments(course)
-    datatable = {'header': [_('Assignment Name')]}
-    datatable['data'] = [[name] for name in assignment_names]
-    datatable['title'] = _('Assignments Available for this Course')
-    return JsonResponse({
-        'datatable': datatable
     })
 
 
