@@ -2571,13 +2571,13 @@ def get_short_labeled_course_assignments(course):
     grading_context = grading_context_for_course(course_key)
     graded_item_labels = []
     for graded_item_type, graded_items in grading_context['all_graded_subsections_by_type'].iteritems():
-        label = get_assignment_type_label(course, graded_item_type)
+        label = get_assignment_type_label(course, graded_item_type) or graded_item_type
         if len(graded_items) == 1:
             graded_item_labels.append(label)
         elif len(graded_items) > 1:
             for i, graded_item in enumerate(graded_items, start=1):
                 graded_item_labels.append(
-                    u"{short_label} {index:02d}".format(short_label=label, index=i)
+                    u"{label} {index:02d}".format(label=label, index=i)
                 )
     return graded_item_labels
 
