@@ -105,10 +105,14 @@
                     .done(function(data) {
                         if (_.isEmpty(data)) {
                             remoteGradebookObj.showErrors(gettext('No results.'));
-                        } else if (_.isEmpty(data.errors)) {
-                            remoteGradebookObj.showResults(remoteGradebookObj.datatableTemplate(data.datatable));
-                        } else {
+                        } else if (!_.isEmpty(data.errors)) {
                             remoteGradebookObj.showErrors(data.errors);
+                        } else {
+                            if (!_.isEmpty(data.datatable)) {
+                                remoteGradebookObj.showResults(remoteGradebookObj.datatableTemplate(data.datatable));
+                            } else {
+                                remoteGradebookObj.showResults(data.message || '');
+                            }
                         }
                     })
                     .fail(function() {

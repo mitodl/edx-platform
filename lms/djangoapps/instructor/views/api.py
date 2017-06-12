@@ -2582,7 +2582,7 @@ def get_short_labeled_course_assignments(course):
     return graded_item_labels
 
 
-def _do_remote_gradebook(user, course, action, **kwargs):
+def _do_remote_gradebook(user, course, action, files=None, **kwargs):
     """
     Perform remote gradebook action. Returns msg, datatable.
     """
@@ -2603,7 +2603,7 @@ def _do_remote_gradebook(user, course, action, **kwargs):
 
     data = dict(submit=action, gradebook=rgbname, user=user.email, **kwargs)
     try:
-        resp = requests.post(rgburl, data=data, verify=False)
+        resp = requests.post(rgburl, data=data, files=files, verify=False)
     except Exception as err:  # pylint: disable=broad-except
         error_msg = _("Failed to communicate with gradebook server at {url}").format(url=rgburl) + "<br/>"
         error_msg += _("Error: {err}").format(err=err)
@@ -2613,14 +2613,20 @@ def _do_remote_gradebook(user, course, action, **kwargs):
     if not resp.ok:
         return resp.content, {}
 
-    retdict = json.loads(resp.content)
-    retdata = retdict['data']  # a list of dicts
-    if retdata and retdata != [{}]:
-        datatable = {'header': retdata[0].keys()}
-        datatable['data'] = [x.values() for x in retdata]
-        datatable['retdata'] = retdata
-        return None, datatable
-    return "Remote gradebook returned no results for this action ({}).".format(action), {}
+    response_json = json.loads(resp.content)
+    message = response_json.get('msg', None)
+    response_data = response_json['data']  # a list of dicts
+    datatable = {}
+    if response_data == [{}]:
+        response_data = []
+    if response_data:
+        datatable = {'header': response_data[0].keys()}
+        datatable['data'] = [x.values() for x in response_data]
+        datatable['retdata'] = response_data
+        message = None
+    if not datatable and not message:
+        message = _("Remote gradebook returned no results for this action ({}).").format(action)
+    return message, datatable
 
 
 @require_POST
@@ -2800,16 +2806,17 @@ def export_assignment_grades_to_rg(request, course_id):
     assignment_name = request.POST.get('assignment_name', '')
     error_msg, datatable = _get_assignment_grade_datatable(course, assignment_name)
 
+    success_msg = ''
     if not error_msg:
         file_pointer = StringIO.StringIO()
         create_datatable_csv(file_pointer, datatable)
         file_pointer.seek(0)
         files = {'datafile': file_pointer}
-        error_msg, _ = _do_remote_gradebook(request.user, course, 'post-grades', files=files)
+        success_msg, _ = _do_remote_gradebook(request.user, course, 'post-grades', files=files)
 
     return JsonResponse({
         'errors': error_msg,
-        'datatable': datatable
+        'message': success_msg
     })
 
 
