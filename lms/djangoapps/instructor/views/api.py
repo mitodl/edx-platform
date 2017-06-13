@@ -2665,7 +2665,6 @@ def _do_remote_gradebook_datatable(user, course, action, files=None, **kwargs):
     return None, datatable
 
 
-
 @require_POST
 @ensure_csrf_cookie
 @cache_control(no_cache=True, no_store=True, must_revalidate=True)
@@ -2813,18 +2812,18 @@ def export_assignment_grades_to_rg(request, course_id):
     assignment_name = request.POST.get('assignment_name', '')
     error_msg, datatable = _get_assignment_grade_datatable(course, assignment_name)
 
-    success_msg = ''
+    response_message = ''
     if not error_msg:
         file_pointer = StringIO.StringIO()
         create_datatable_csv(file_pointer, datatable)
         file_pointer.seek(0)
         files = {'datafile': file_pointer}
         error_msg, response_json = _do_remote_gradebook(request.user, course, 'post-grades', files=files)
-        success_msg = response_json.get('msg')
+        response_message = response_json.get('msg', '')
 
     return JsonResponse({
         'errors': error_msg,
-        'message': success_msg
+        'message': response_message
     })
 
 
