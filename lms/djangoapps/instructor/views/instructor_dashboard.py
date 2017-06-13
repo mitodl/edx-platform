@@ -604,6 +604,7 @@ def _section_data_download(course, access):
 
 
 def _section_remote_gradebook(course):
+    """ Provide data for the corresponding dashboard section """
     section_data = {
         'section_key': 'remote_gradebook',
         'section_display_name': _('Remote Gradebook'),

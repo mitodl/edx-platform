@@ -2445,6 +2445,8 @@ def problem_grade_report(request, course_id):
 
 class GradeTable(object):
     """
+    *Legacy code restored & adapted from Dogwood*
+
     Keep track of grades, by student, for all graded assignment
     components.  Each student's grades are stored in a list.  The
     index of this list specifies the assignment component.  Not
@@ -2515,8 +2517,10 @@ class GradeTable(object):
         return self.components.keys()
 
 
-def get_student_grade_summary_data(course, get_grades=True):
+def _get_student_grade_summary_data(course):
     """
+    *Legacy code restored & adapted from Dogwood*
+
     Return data arrays with student identity and grades for specified course.
     """
     enrolled_students = CourseEnrollment.objects.users_enrolled_in(course.id)
@@ -2535,39 +2539,73 @@ def get_student_grade_summary_data(course, get_grades=True):
         except Exception:  # pylint: disable=broad-except
             datarow.append('')
 
-        if get_grades:
-            gradeset = CourseGradeFactory().create(student, course).summary
-            log.debug(u'student=%s, gradeset=%s', student, gradeset)
-            with gtab.add_row(student.id) as add_grade:
-                for grade_item in gradeset['section_breakdown']:
-                    add_grade(grade_item['label'], grade_item['percent'])
-            student.grades = gtab.get_grade(student.id)
+        gradeset = CourseGradeFactory().create(student, course).summary
+        log.debug(u'student=%s, gradeset=%s', student, gradeset)
+        with gtab.add_row(student.id) as add_grade:
+            for grade_item in gradeset['section_breakdown']:
+                add_grade(grade_item['label'], grade_item['percent'])
+        student.grades = gtab.get_grade(student.id)
 
         data.append(datarow)
 
-    # if getting grades, need to do a second pass, and add grades to each datarow;
+    # need to do a second pass and add grades to each datarow;
     # on the first pass we don't know all the graded components
-    if get_grades:
-        for datarow in data:
-            # get grades for student
-            sgrades = gtab.get_grade(datarow[0])
-            datarow += sgrades
+    for datarow in data:
+        # get grades for student
+        sgrades = gtab.get_grade(datarow[0])
+        datarow += sgrades
 
-        # get graded components and add to table header
-        assignments = gtab.get_graded_components()
-        header += assignments
-        datatable['assignments'] = assignments
+    # get graded components and add to table header
+    assignments = gtab.get_graded_components()
+    header += assignments
+    datatable['assignments'] = assignments
 
     datatable['data'] = data
     return datatable
 
 
-def get_short_labeled_course_assignments(course):
+def _get_assignment_grade_datatable(course, assignment_name):
+    """
+    *Legacy code restored & adapted from Dogwood*
+
+    Returns a datatable of students' grades for an assignment in the given course
+    """
+    allgrades = _get_student_grade_summary_data(course)
+    datatable = {}
+    error_msg = None
+    if not assignment_name:
+        error_msg = _("No assignment name given")
+    elif assignment_name not in allgrades['assignments']:
+        error_msg = _("Invalid assignment name '{name}'").format(name=assignment_name)
+    else:
+        aidx = allgrades['assignments'].index(assignment_name)
+        datatable = {'header': [_('External email'), assignment_name]}
+        ddata = []
+        for student in allgrades['students']:  # do one by one in case there is a student who has only partial grades
+            try:
+                ddata.append([student.email, student.grades[aidx]])
+            except IndexError:
+                log.debug(u'No grade for assignment %(idx)s (%(name)s) for student %(email)s', {
+                    "idx": aidx,
+                    "name": assignment_name,
+                    "email": student.email,
+                })
+        datatable['data'] = ddata
+        datatable['title'] = _('Grades for assignment "{name}"').format(name=assignment_name)
+    return error_msg, datatable
+
+
+def get_course_assignment_labels(course):
+    """
+    Gets a list labels for all assignments in a course based on the assignment type and the
+    grading policy of the course.
+    E.g.: ['Hw 01', 'Hw 02', 'Ex 01', 'Lab']
+    """
     course_key = course.id
     grading_context = grading_context_for_course(course_key)
     graded_item_labels = []
     for graded_item_type, graded_items in grading_context['all_graded_subsections_by_type'].iteritems():
-        label = get_assignment_type_label(course, graded_item_type) or graded_item_type
+        label = get_assignment_type_label(course, graded_item_type)
         if len(graded_items) == 1:
             graded_item_labels.append(label)
         elif len(graded_items) > 1:
@@ -2580,7 +2618,7 @@ def get_short_labeled_course_assignments(course):
 
 def _do_remote_gradebook(user, course, action, files=None, **kwargs):
     """
-    Perform remote gradebook action. Returns msg, datatable.
+    Perform remote gradebook action. Returns error message, response dict.
     """
     rgburl = settings.FEATURES.get('REMOTE_GRADEBOOK_URL', '')
     if not rgburl:
@@ -2612,6 +2650,9 @@ def _do_remote_gradebook(user, course, action, files=None, **kwargs):
 
 
 def _do_remote_gradebook_datatable(user, course, action, files=None, **kwargs):
+    """
+    Perform remote gradebook action that returns a datatable. Returns error message, datatable dict.
+    """
     error_message, response_json = _do_remote_gradebook(user, course, action, files=files, **kwargs)
     if error_message:
         return error_message, {}
@@ -2675,6 +2716,7 @@ def list_matching_remote_enrolled_students(request, course_id):
 @require_level('staff')
 def list_remote_students_in_section(request, course_id):
     """
+    Returns a datatable of students in the remote gradebook that are enrolled in a specific section
     """
     section_name = request.POST.get('section_name', '')
     course_id = SlashSeparatedCourseKey.from_deprecated_string(course_id)
@@ -2697,7 +2739,7 @@ def get_assignment_names(request, course_id):
     """
     course_id = SlashSeparatedCourseKey.from_deprecated_string(course_id)
     course = get_course_by_id(course_id)
-    assignment_names = get_short_labeled_course_assignments(course)
+    assignment_names = get_course_assignment_labels(course)
     return JsonResponse({
         'data': assignment_names
     })
@@ -2719,35 +2761,6 @@ def list_remote_assignments(request, course_id):
         'errors': error_msg,
         'datatable': datatable,
     })
-
-
-def _get_assignment_grade_datatable(course, assignment_name):
-    """
-    Returns a datatable of students' grades for an assignment in the given course
-    """
-    allgrades = get_student_grade_summary_data(course, get_grades=True)
-    datatable = {}
-    error_msg = None
-    if not assignment_name:
-        error_msg = _("No assignment name given")
-    elif assignment_name not in allgrades['assignments']:
-        error_msg = _("Invalid assignment name '{name}'").format(name=assignment_name)
-    else:
-        aidx = allgrades['assignments'].index(assignment_name)
-        datatable = {'header': [_('External email'), assignment_name]}
-        ddata = []
-        for student in allgrades['students']:  # do one by one in case there is a student who has only partial grades
-            try:
-                ddata.append([student.email, student.grades[aidx]])
-            except IndexError:
-                log.debug(u'No grade for assignment %(idx)s (%(name)s) for student %(email)s', {
-                    "idx": aidx,
-                    "name": assignment_name,
-                    "email": student.email,
-                })
-        datatable['data'] = ddata
-        datatable['title'] = _('Grades for assignment "{name}"').format(name=assignment_name)
-    return error_msg, datatable
 
 
 def create_datatable_csv(csv_file, datatable):

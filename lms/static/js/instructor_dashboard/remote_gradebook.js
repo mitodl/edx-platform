@@ -35,23 +35,23 @@
             };
 
             function createLoadingSpinner(text) {
-                var spinner =
+                var $spinner =
                     $('<span></span>')
                         .addClass('icon fa fa-spinner fa-spin fa-large');
-                var spinnerContainer =
+                var $spinnerContainer =
                     $('<span></span>')
                         .addClass('loading')
-                        .append(spinner);
+                        .append($spinner);
                 if (text) {
-                    spinnerContainer.append(text);
+                    $spinnerContainer.append(text);
                 }
-                return spinnerContainer;
+                return $spinnerContainer;
             }
 
             function loadSelectBoxOptions($el) {
                 var url = $el.data('endpoint');
-                var spinner = createLoadingSpinner(gettext(' Loading options...'));
-                spinner
+                var $spinner = createLoadingSpinner(gettext(' Loading options...'));
+                $spinner
                     .css({'display': 'inline-block', 'padding-left': '10px'})
                     .insertAfter($el);
 
@@ -84,15 +84,15 @@
                         .insertAfter($el);
                 })
                 .always(function() {
-                    spinner.remove();
+                    $spinner.remove();
                 });
             }
 
             function addDatatableClickHandler($el, createRequestData) {
                 $el.click(function() {
                     var url = $el.data('endpoint');
-                    var spinner = createLoadingSpinner();
-                    spinner
+                    var $spinner = createLoadingSpinner();
+                    $spinner
                         .css('display', 'block')
                         .insertBefore(remoteGradebookObj.$errors);
 
@@ -119,7 +119,7 @@
                         remoteGradebookObj.showErrors(gettext('Request failed.'));
                     })
                     .always(function() {
-                        spinner.remove();
+                        $spinner.remove();
                     });
                 });
             }
