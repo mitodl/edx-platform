@@ -2519,11 +2519,7 @@ def get_student_grade_summary_data(course, get_grades=True):
     """
     Return data arrays with student identity and grades for specified course.
     """
-    course_key = course.id
-    enrolled_students = User.objects.filter(
-        courseenrollment__course_id=course_key,
-        courseenrollment__is_active=1,
-    ).prefetch_related("groups").order_by('username')
+    enrolled_students = CourseEnrollment.objects.users_enrolled_in(course.id)
 
     header = [_('ID'), _('Username'), _('Full Name'), _('edX email'), _('External email')]
 
@@ -2612,21 +2608,21 @@ def _do_remote_gradebook(user, course, action, files=None, **kwargs):
         return error_msg, {}
     if not resp.ok:
         return resp.content, {}
+    return None, json.loads(resp.content)
 
-    response_json = json.loads(resp.content)
-    message = response_json.get('msg', None)
+
+def _do_remote_gradebook_datatable(user, course, action, files=None, **kwargs):
+    error_message, response_json = _do_remote_gradebook(user, course, action, files=files, **kwargs)
+    if error_message:
+        return error_message, {}
     response_data = response_json['data']  # a list of dicts
-    datatable = {}
-    if response_data == [{}]:
-        response_data = []
-    if response_data:
-        datatable = {'header': response_data[0].keys()}
-        datatable['data'] = [x.values() for x in response_data]
-        datatable['retdata'] = response_data
-        message = None
-    if not datatable and not message:
-        message = _("Remote gradebook returned no results for this action ({}).").format(action)
-    return message, datatable
+    if not response_data or response_data == [{}]:
+        return _("Remote gradebook returned no results for this action ({}).").format(action), {}
+    datatable = {'header': response_data[0].keys()}
+    datatable['data'] = [x.values() for x in response_data]
+    datatable['retdata'] = response_data
+    return None, datatable
+
 
 
 @require_POST
@@ -2640,7 +2636,7 @@ def get_remote_gradebook_sections(request, course_id):
     """
     course_id = SlashSeparatedCourseKey.from_deprecated_string(course_id)
     course = get_course_by_id(course_id)
-    error_msg, datatable = _do_remote_gradebook(request.user, course, 'get-sections')
+    error_msg, datatable = _do_remote_gradebook_datatable(request.user, course, 'get-sections')
     return JsonResponse({
         'errors': error_msg,
         'data': [datarow[0] for datarow in datatable['data']]
@@ -2658,16 +2654,14 @@ def list_matching_remote_enrolled_students(request, course_id):
     """
     course_id = SlashSeparatedCourseKey.from_deprecated_string(course_id)
     course = get_course_by_id(course_id)
-    error_msg, rg_student_data = _do_remote_gradebook(request.user, course, 'get-membership')
+    error_msg, rg_datatable = _do_remote_gradebook_datatable(request.user, course, 'get-membership')
     datatable = {}
     if not error_msg:
-        student_data = get_student_grade_summary_data(course, get_grades=False)
+        enrolled_students = CourseEnrollment.objects.users_enrolled_in(course.id)
+        rg_student_emails = [x['email'] for x in rg_datatable['retdata']]
+        has_match = lambda student: 'yes' if student.email in rg_student_emails else 'No'
         datatable = {'header': ['Student  email', 'Match?']}
-        rg_students = [x['email'] for x in rg_student_data['retdata']]
-
-        has_match = lambda student: 'yes' if student.email in rg_students else 'No'
-
-        datatable['data'] = [[student.email, has_match(student)] for student in student_data['students']]
+        datatable['data'] = [[student.email, has_match(student)] for student in enrolled_students]
         datatable['title'] = _('Enrolled Students Matching Remote Gradebook')
     return JsonResponse({
         'errors': error_msg,
@@ -2685,7 +2679,7 @@ def list_remote_students_in_section(request, course_id):
     section_name = request.POST.get('section_name', '')
     course_id = SlashSeparatedCourseKey.from_deprecated_string(course_id)
     course = get_course_by_id(course_id)
-    error_msg, datatable = _do_remote_gradebook(request.user, course, 'get-membership', section=section_name)
+    error_msg, datatable = _do_remote_gradebook_datatable(request.user, course, 'get-membership', section=section_name)
     datatable['title'] = _('Enrolled Students in Section in Remote Gradebook')
     return JsonResponse({
         'errors': error_msg,
@@ -2719,7 +2713,7 @@ def list_remote_assignments(request, course_id):
     """
     course_id = SlashSeparatedCourseKey.from_deprecated_string(course_id)
     course = get_course_by_id(course_id)
-    error_msg, datatable = _do_remote_gradebook(request.user, course, 'get-assignments')
+    error_msg, datatable = _do_remote_gradebook_datatable(request.user, course, 'get-assignments')
     datatable['title'] = _('Remote Gradebook Assignments')
     return JsonResponse({
         'errors': error_msg,
@@ -2812,7 +2806,8 @@ def export_assignment_grades_to_rg(request, course_id):
         create_datatable_csv(file_pointer, datatable)
         file_pointer.seek(0)
         files = {'datafile': file_pointer}
-        success_msg, _ = _do_remote_gradebook(request.user, course, 'post-grades', files=files)
+        error_msg, response_json = _do_remote_gradebook(request.user, course, 'post-grades', files=files)
+        success_msg = response_json.get('msg')
 
     return JsonResponse({
         'errors': error_msg,
