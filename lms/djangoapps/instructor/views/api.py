@@ -13,6 +13,7 @@ import re
 import time
 from contextlib import contextmanager
 from collections import OrderedDict
+from itertools import ifilter
 from django.conf import settings
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_POST, require_http_methods
@@ -2443,177 +2444,30 @@ def problem_grade_report(request, course_id):
         })
 
 
-class GradeTable(object):
-    """
-    *Legacy code restored & adapted from Dogwood*
-
-    Keep track of grades, by student, for all graded assignment
-    components.  Each student's grades are stored in a list.  The
-    index of this list specifies the assignment component.  Not
-    all lists have the same length, because at the start of going
-    through the set of grades, it is unknown what assignment
-    compoments exist.  This is because some students may not do
-    all the assignment components.
-
-    The student grades are then stored in a dict, with the student
-    id as the key.
-    """
-    def __init__(self):
-        self.components = OrderedDict()
-        self.grades = {}
-        self._current_row = {}
-
-    def _add_grade_to_row(self, component, score, possible=None):
-        """Creates component if needed, and assigns score
-
-        Args:
-            component (str): Course component being graded
-            score (float): Score of student on component
-            possible (float): Max possible score for the component
-
-        Returns:
-           None
-        """
-        component_index = self.components.setdefault(component, len(self.components))
-        if possible is not None:
-            # send a tuple instead of a single value
-            score = (score, possible)
-        self._current_row[component_index] = score
-
-    @contextmanager
-    def add_row(self, student_id):
-        """Context management for a row of grades
-
-        Uses a new dictionary to get all grades of a specified student
-        and closes by adding that dict to the internal table.
-
-        Args:
-            student_id (str): Student id that is having grades set
-
-        """
-        self._current_row = {}
-        yield self._add_grade_to_row
-        self.grades[student_id] = self._current_row
-
-    def get_grade(self, student_id):
-        """Retrieves padded list of grades for specified student
-
-        Args:
-            student_id (str): Student ID for desired grades
-
-        Returns:
-            list: Ordered list of grades for student
-
-        """
-        row = self.grades.get(student_id, [])
-        ncomp = len(self.components)
-        return [row.get(comp, None) for comp in range(ncomp)]
-
-    def get_graded_components(self):
-        """
-        Return a list of components that have been
-        discovered so far.
-        """
-        return self.components.keys()
-
-
-def _get_student_grade_summary_data(course):
-    """
-    *Legacy code restored & adapted from Dogwood*
-
-    Return data arrays with student identity and grades for specified course.
-    """
-    enrolled_students = CourseEnrollment.objects.users_enrolled_in(course.id)
-
-    header = [_('ID'), _('Username'), _('Full Name'), _('edX email'), _('External email')]
-
-    datatable = {'header': header, 'students': enrolled_students}
-    data = []
-
-    gtab = GradeTable()
-
-    for student in enrolled_students:
-        datarow = [student.id, student.username, student.profile.name, student.email]
-        try:
-            datarow.append(student.externalauthmap.external_email)
-        except Exception:  # pylint: disable=broad-except
-            datarow.append('')
-
-        gradeset = CourseGradeFactory().create(student, course).summary
-        log.debug(u'student=%s, gradeset=%s', student, gradeset)
-        with gtab.add_row(student.id) as add_grade:
-            for grade_item in gradeset['section_breakdown']:
-                add_grade(grade_item['label'], grade_item['percent'])
-        student.grades = gtab.get_grade(student.id)
-
-        data.append(datarow)
-
-    # need to do a second pass and add grades to each datarow;
-    # on the first pass we don't know all the graded components
-    for datarow in data:
-        # get grades for student
-        sgrades = gtab.get_grade(datarow[0])
-        datarow += sgrades
-
-    # get graded components and add to table header
-    assignments = gtab.get_graded_components()
-    header += assignments
-    datatable['assignments'] = assignments
-
-    datatable['data'] = data
-    return datatable
-
-
 def _get_assignment_grade_datatable(course, assignment_name):
     """
-    *Legacy code restored & adapted from Dogwood*
-
     Returns a datatable of students' grades for an assignment in the given course
     """
-    allgrades = _get_student_grade_summary_data(course)
-    datatable = {}
-    error_msg = None
     if not assignment_name:
-        error_msg = _("No assignment name given")
-    elif assignment_name not in allgrades['assignments']:
-        error_msg = _("Invalid assignment name '{name}'").format(name=assignment_name)
-    else:
-        aidx = allgrades['assignments'].index(assignment_name)
-        datatable = {'header': [_('External email'), assignment_name]}
-        ddata = []
-        for student in allgrades['students']:  # do one by one in case there is a student who has only partial grades
-            try:
-                ddata.append([student.email, student.grades[aidx]])
-            except IndexError:
-                log.debug(u'No grade for assignment %(idx)s (%(name)s) for student %(email)s', {
-                    "idx": aidx,
-                    "name": assignment_name,
-                    "email": student.email,
-                })
-        datatable['data'] = ddata
-        datatable['title'] = _('Grades for assignment "{name}"').format(name=assignment_name)
-    return error_msg, datatable
+        return _("No assignment name given"), {}
 
-
-def get_course_assignment_labels(course):
-    """
-    Gets a list labels for all assignments in a course based on the assignment type and the
-    grading policy of the course.
-    E.g.: ['Hw 01', 'Hw 02', 'Ex 01', 'Lab']
-    """
-    course_key = course.id
-    grading_context = grading_context_for_course(course_key)
-    graded_item_labels = []
-    for graded_item_type, graded_items in grading_context['all_graded_subsections_by_type'].iteritems():
-        label = get_assignment_type_label(course, graded_item_type)
-        if len(graded_items) == 1:
-            graded_item_labels.append(label)
-        elif len(graded_items) > 1:
-            for i, graded_item in enumerate(graded_items, start=1):
-                graded_item_labels.append(
-                    u"{label} {index:02d}".format(label=label, index=i)
-                )
-    return graded_item_labels
+    row_data = []
+    enrolled_students = CourseEnrollment.objects.users_enrolled_in(course.id)
+    for student, course_grade, err_msg in CourseGradeFactory().iter(course, enrolled_students):
+        if course_grade and not err_msg:
+            matching_assignment_grade = next(
+                ifilter(
+                    lambda grade_section: grade_section['label'] == assignment_name,
+                    course_grade.summary['section_breakdown']
+                ), {}
+            )
+            row_data.append([student.email, matching_assignment_grade.get('percent', 0)])
+    datatable = dict(
+        header=[_('External email'), assignment_name],
+        data=row_data,
+        title=_('Grades for assignment "{name}"').format(name=assignment_name)
+    )
+    return None, datatable
 
 
 def _do_remote_gradebook(user, course, action, files=None, **kwargs):
@@ -2659,10 +2513,33 @@ def _do_remote_gradebook_datatable(user, course, action, files=None, **kwargs):
     response_data = response_json['data']  # a list of dicts
     if not response_data or response_data == [{}]:
         return _("Remote gradebook returned no results for this action ({}).").format(action), {}
-    datatable = {'header': response_data[0].keys()}
-    datatable['data'] = [x.values() for x in response_data]
-    datatable['retdata'] = response_data
+    datatable = dict(
+        header=response_data[0].keys(),
+        data=[x.values() for x in response_data],
+        retdata=response_data,
+    )
     return None, datatable
+
+
+def get_course_assignment_labels(course):
+    """
+    Gets a list labels for all assignments in a course based on the assignment type and the
+    grading policy of the course.
+    E.g.: ['Hw 01', 'Hw 02', 'Ex 01', 'Lab']
+    """
+    course_key = course.id
+    grading_context = grading_context_for_course(course_key)
+    graded_item_labels = []
+    for graded_item_type, graded_items in grading_context['all_graded_subsections_by_type'].iteritems():
+        label = get_assignment_type_label(course, graded_item_type)
+        if len(graded_items) == 1:
+            graded_item_labels.append(label)
+        elif len(graded_items) > 1:
+            for i, graded_item in enumerate(graded_items, start=1):
+                graded_item_labels.append(
+                    u"{label} {index:02d}".format(label=label, index=i)
+                )
+    return graded_item_labels
 
 
 @require_POST
@@ -2700,9 +2577,11 @@ def list_matching_remote_enrolled_students(request, course_id):
         enrolled_students = CourseEnrollment.objects.users_enrolled_in(course.id)
         rg_student_emails = [x['email'] for x in rg_datatable['retdata']]
         has_match = lambda student: 'yes' if student.email in rg_student_emails else 'No'
-        datatable = {'header': ['Student  email', 'Match?']}
-        datatable['data'] = [[student.email, has_match(student)] for student in enrolled_students]
-        datatable['title'] = _('Enrolled Students Matching Remote Gradebook')
+        datatable = dict(
+            header=['Student  email', 'Match?'],
+            data=[[student.email, has_match(student)] for student in enrolled_students],
+            title=_('Enrolled Students Matching Remote Gradebook'),
+        )
     return JsonResponse({
         'errors': error_msg,
         'datatable': datatable
