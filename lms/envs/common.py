@@ -3048,3 +3048,5 @@ ENTERPRISE_ENROLLMENT_API_URL = LMS_ROOT_URL + "/api/enrollment/v1/"
 ############## Remote gradebook settings ######################
 
 REMOTE_GRADEBOOK = {}
+REMOTE_GRADEBOOK_USER = None
+REMOTE_GRADEBOOK_PASSWORD = None

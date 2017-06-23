@@ -2475,18 +2475,30 @@ def _do_remote_gradebook(user, course, action, files=None, **kwargs):
     Perform remote gradebook action. Returns error message, response dict.
     """
     rg_url = settings.REMOTE_GRADEBOOK.get('URL')
+    rg_user = settings.REMOTE_GRADEBOOK_USER
+    rg_password = settings.REMOTE_GRADEBOOK_PASSWORD
     if not rg_url:
-        error_msg = _("No remote gradebook url defined in settings")
+        error_msg = _("Missing required remote gradebook env setting: ") + "REMOTE_GRADEBOOK['URL']"
+        return error_msg, {}
+    elif not rg_user or not rg_password:
+        error_msg = _("Missing required remote gradebook auth settings: ") + \
+                    "REMOTE_GRADEBOOK_USER, REMOTE_GRADEBOOK_PASSWORD"
         return error_msg, {}
 
-    rg_course_setting = course.remote_gradebook or {}
-    rg_name = rg_course_setting.get('name') or settings.REMOTE_GRADEBOOK.get('DEFAULT_NAME')
+    rg_course_settings = course.remote_gradebook or {}
+    rg_name = rg_course_settings.get('name') or settings.REMOTE_GRADEBOOK.get('DEFAULT_NAME')
     if not rg_name:
-        error_msg = _("No gradebook name defined in course remote_gradebook metadata")
+        error_msg = _("No gradebook name defined in course remote_gradebook metadata and no default name set")
         return error_msg, {}
 
     data = dict(submit=action, gradebook=rg_name, user=user.email, **kwargs)
-    resp = requests.post(rg_url, data=data, files=files, verify=False)
+    resp = requests.post(
+        rg_url,
+        auth=(rg_user, rg_password),
+        data=data,
+        files=files,
+        verify=False
+    )
     if not resp.ok:
         error_header = _("Error communicating with gradebook server at {url}").format(url=rg_url)
         return '<p>{error_header}</p>{content}'.format(error_header=error_header, content=resp.content), {}
@@ -2566,7 +2578,7 @@ def list_matching_remote_enrolled_students(request, course_id):
     if not error_msg:
         enrolled_students = CourseEnrollment.objects.users_enrolled_in(course.id)
         rg_student_emails = [x['email'] for x in rg_datatable['retdata']]
-        has_match = lambda student: 'yes' if student.email in rg_student_emails else 'No'
+        has_match = lambda student: 'Yes' if student.email in rg_student_emails else 'No'
         datatable = dict(
             header=['Student  email', 'Match?'],
             data=[[student.email, has_match(student)] for student in enrolled_students],
