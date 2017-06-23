@@ -127,8 +127,8 @@ def instructor_dashboard_2(request, course_id):
         _section_data_download(course, access),
     ]
 
-    if settings.FEATURES.get('ENABLE_INSTRUCTOR_GRADE_EXPORT', False):
-        sections.append(_section_grade_export(course))
+    if settings.FEATURES.get('ENABLE_INSTRUCTOR_REMOTE_GRADEBOOK_CONTROLS', False):
+        sections.append(_section_remote_gradebook(course))
 
     analytics_dashboard_message = None
     if show_analytics_dashboard_message(course_key):
@@ -603,19 +603,29 @@ def _section_data_download(course, access):
     return section_data
 
 
-def _section_grade_export(course):
+def _section_remote_gradebook(course):
+    """ Provide data for the corresponding dashboard section """
+    rg_course_setting = course.remote_gradebook or {}
+    rg_name = rg_course_setting.get('name') or settings.REMOTE_GRADEBOOK.get('DEFAULT_NAME')
     section_data = {
-        'section_key': 'grade_export',
-        'section_display_name': _('Export Grades'),
+        'section_key': 'remote_gradebook',
+        'section_display_name': _('Remote Gradebook'),
         'course': course,
-        'list_remote_assignments_url': reverse(
-            'list_remote_assignments', kwargs={'course_id': unicode(course.id)}
+        'remote_gradebook_name': rg_name,
+        'get_remote_gradebook_sections_url': reverse(
+            'get_remote_gradebook_sections', kwargs={'course_id': unicode(course.id)}
+        ),
+        'get_assignment_names_url': reverse(
+            'get_assignment_names', kwargs={'course_id': unicode(course.id)}
         ),
         'list_remote_enrolled_students_url': reverse(
             'list_remote_enrolled_students', kwargs={'course_id': unicode(course.id)}
         ),
-        'list_course_assignments_url': reverse(
-            'list_course_assignments', kwargs={'course_id': unicode(course.id)}
+        'list_remote_students_in_section_url': reverse(
+            'list_remote_students_in_section', kwargs={'course_id': unicode(course.id)}
+        ),
+        'list_remote_assignments_url': reverse(
+            'list_remote_assignments', kwargs={'course_id': unicode(course.id)}
         ),
         'display_assignment_grades_url': reverse(
             'display_assignment_grades', kwargs={'course_id': unicode(course.id)}
