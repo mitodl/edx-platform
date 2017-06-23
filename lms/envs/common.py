@@ -213,7 +213,7 @@ FEATURES = {
         "certificate_status"
     ],
 
-    'ENABLE_INSTRUCTOR_GRADE_EXPORT': False,
+    'ENABLE_INSTRUCTOR_REMOTE_GRADEBOOK_CONTROLS': False,
 
     # Turn off account locking if failed login attempts exceeds a limit
     'ENABLE_MAX_FAILED_LOGIN_ATTEMPTS': True,
@@ -3044,3 +3044,7 @@ DOC_LINK_BASE_URL = None
 ############## Settings for the Enterprise App ######################
 
 ENTERPRISE_ENROLLMENT_API_URL = LMS_ROOT_URL + "/api/enrollment/v1/"
+
+############## Remote gradebook settings ######################
+
+REMOTE_GRADEBOOK = {}

@@ -96,13 +96,17 @@ urlpatterns = patterns(
     url(r'problem_grade_report$',
         'lms.djangoapps.instructor.views.api.problem_grade_report', name="problem_grade_report"),
 
-    # Grade exports...
+    # Remote gradebook...
+    url(r'^get_remote_gradebook_sections',
+        'lms.djangoapps.instructor.views.api.get_remote_gradebook_sections', name="get_remote_gradebook_sections"),
+    url(r'^get_assignment_names',
+        'lms.djangoapps.instructor.views.api.get_assignment_names', name="get_assignment_names"),
+    url(r'^list_remote_enrolled_students',
+        'lms.djangoapps.instructor.views.api.list_matching_remote_enrolled_students', name="list_remote_enrolled_students"),
+    url(r'^list_remote_students_in_section',
+        'lms.djangoapps.instructor.views.api.list_remote_students_in_section', name="list_remote_students_in_section"),
     url(r'^list_remote_assignments',
         'lms.djangoapps.instructor.views.api.list_remote_assignments', name="list_remote_assignments"),
-    url(r'^list_remote_enrolled_students',
-        'lms.djangoapps.instructor.views.api.list_remote_enrolled_students', name="list_remote_enrolled_students"),
-    url(r'^list_course_assignments',
-        'lms.djangoapps.instructor.views.api.list_course_assignments', name="list_course_assignments"),
     url(r'^display_assignment_grades',
         'lms.djangoapps.instructor.views.api.display_assignment_grades', name="display_assignment_grades"),
     url(r'^export_assignment_grades_to_rg',
