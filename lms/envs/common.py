@@ -3044,3 +3044,7 @@ DOC_LINK_BASE_URL = None
 ############## Settings for the Enterprise App ######################
 
 ENTERPRISE_ENROLLMENT_API_URL = LMS_ROOT_URL + "/api/enrollment/v1/"
+
+############## Remote gradebook settings ######################
+
+REMOTE_GRADEBOOK = {}

@@ -6,7 +6,7 @@ from openedx.core.djangolib.markup import HTML, Text
 
 <section>
   <p class="gradebook-name">
-    <span class="copy-confirm">${_("Gradebook name:")} <strong>${ course.remote_gradebook.get('name') }</strong></span>
+    <span class="copy-confirm">${_("Gradebook name:")} <strong>${ section_data['remote_gradebook_name'] }</strong></span>
   </p>
 
   <hr>

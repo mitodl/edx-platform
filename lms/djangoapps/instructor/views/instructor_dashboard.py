@@ -605,10 +605,13 @@ def _section_data_download(course, access):
 
 def _section_remote_gradebook(course):
     """ Provide data for the corresponding dashboard section """
+    rg_course_setting = course.remote_gradebook or {}
+    rg_name = rg_course_setting.get('name') or settings.REMOTE_GRADEBOOK.get('DEFAULT_NAME')
     section_data = {
         'section_key': 'remote_gradebook',
         'section_display_name': _('Remote Gradebook'),
         'course': course,
+        'remote_gradebook_name': rg_name,
         'get_remote_gradebook_sections_url': reverse(
             'get_remote_gradebook_sections', kwargs={'course_id': unicode(course.id)}
         ),

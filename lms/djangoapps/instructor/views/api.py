@@ -2474,26 +2474,22 @@ def _do_remote_gradebook(user, course, action, files=None, **kwargs):
     """
     Perform remote gradebook action. Returns error message, response dict.
     """
-    rgburl = settings.FEATURES.get('REMOTE_GRADEBOOK_URL', '')
-    if not rgburl:
-        error_msg = _("No remote gradebook url defined in settings.FEATURES")
+    rg_url = settings.REMOTE_GRADEBOOK.get('URL')
+    if not rg_url:
+        error_msg = _("No remote gradebook url defined in settings")
         return error_msg, {}
 
-    rgb = course.remote_gradebook
-    if not rgb:
-        error_msg = _("No remote gradebook defined in course metadata")
-        return error_msg, {}
-
-    rgbname = rgb.get('name', '')
-    if not rgbname:
+    rg_course_setting = course.remote_gradebook or {}
+    rg_name = rg_course_setting.get('name') or settings.REMOTE_GRADEBOOK.get('DEFAULT_NAME')
+    if not rg_name:
         error_msg = _("No gradebook name defined in course remote_gradebook metadata")
         return error_msg, {}
 
-    data = dict(submit=action, gradebook=rgbname, user=user.email, **kwargs)
+    data = dict(submit=action, gradebook=rg_name, user=user.email, **kwargs)
     try:
-        resp = requests.post(rgburl, data=data, files=files, verify=False)
+        resp = requests.post(rg_url, data=data, files=files, verify=False)
     except Exception as err:  # pylint: disable=broad-except
-        error_msg = _("Failed to communicate with gradebook server at {url}").format(url=rgburl) + "<br/>"
+        error_msg = _("Failed to communicate with gradebook server at {url}").format(url=rg_url) + "<br/>"
         error_msg += _("Error: {err}").format(err=err)
         error_msg += "<br/>resp={resp}".format(resp=resp.content)
         error_msg += "<br/>data={data}".format(data=data)
@@ -2510,7 +2506,7 @@ def _do_remote_gradebook_datatable(user, course, action, files=None, **kwargs):
     error_message, response_json = _do_remote_gradebook(user, course, action, files=files, **kwargs)
     if error_message:
         return error_message, {}
-    response_data = response_json['data']  # a list of dicts
+    response_data = response_json.get('data')  # a list of dicts
     if not response_data or response_data == [{}]:
         return _("Remote gradebook returned no results for this action ({}).").format(action), {}
     datatable = dict(
@@ -2556,7 +2552,7 @@ def get_remote_gradebook_sections(request, course_id):
     error_msg, datatable = _do_remote_gradebook_datatable(request.user, course, 'get-sections')
     return JsonResponse({
         'errors': error_msg,
-        'data': [datarow[0] for datarow in datatable['data']]
+        'data': [datarow[0] for datarow in datatable.get('data', [])]
     })
 
 
