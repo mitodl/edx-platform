@@ -2486,16 +2486,10 @@ def _do_remote_gradebook(user, course, action, files=None, **kwargs):
         return error_msg, {}
 
     data = dict(submit=action, gradebook=rg_name, user=user.email, **kwargs)
-    try:
-        resp = requests.post(rg_url, data=data, files=files, verify=False)
-    except Exception as err:  # pylint: disable=broad-except
-        error_msg = _("Failed to communicate with gradebook server at {url}").format(url=rg_url) + "<br/>"
-        error_msg += _("Error: {err}").format(err=err)
-        error_msg += "<br/>resp={resp}".format(resp=resp.content)
-        error_msg += "<br/>data={data}".format(data=data)
-        return error_msg, {}
+    resp = requests.post(rg_url, data=data, files=files, verify=False)
     if not resp.ok:
-        return resp.content, {}
+        error_header = _("Error communicating with gradebook server at {url}").format(url=rg_url)
+        return '<p>{error_header}</p>{content}'.format(error_header=error_header, content=resp.content), {}
     return None, json.loads(resp.content)
 
 
