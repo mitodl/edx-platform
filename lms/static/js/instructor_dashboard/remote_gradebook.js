@@ -16,6 +16,8 @@
             this.$assignment_name_select = this.$section.find("#assignment-name");
             this.$list_remote_enrolled_students_btn = this.$section.find("input[name='list-remote-enrolled-students']");
             this.$list_remote_students_in_section_btn = this.$section.find("input[name='list-remote-students-in-section']");
+            this.$merge_enrolled_students_in_section_btn = this.$section.find("input[name='merge-enrolled-students-in-section']");
+            this.$overload_enrolled_students_in_section_btn = this.$section.find("input[name='overload-enrolled-students-in-section']");
             this.$list_remote_assign_btn = this.$section.find("input[name='list-remote-assignments']");
             this.$list_course_assignments_btn = this.$section.find("input[name='list-course-assignments']");
             this.$display_assignment_grades_btn = this.$section.find("input[name='display-assignment-grades']");
@@ -88,40 +90,46 @@
                 });
             }
 
-            function addDatatableClickHandler($el, createRequestData) {
-                $el.click(function() {
-                    var url = $el.data('endpoint');
-                    var $spinner = createLoadingSpinner();
-                    $spinner
-                        .css('display', 'block')
-                        .insertBefore(remoteGradebookObj.$errors);
+            function fetchAndRenderDatatable($el, requestData) {
+                var url = $el.data('endpoint');
+                var $spinner = createLoadingSpinner();
+                $spinner
+                    .css('display', 'block')
+                    .insertBefore(remoteGradebookObj.$errors);
 
-                    return $.ajax({
-                        type: 'POST',
-                        dataType: 'json',
-                        url: url,
-                        data: _.isFunction(createRequestData) ? createRequestData() : {}
-                    })
-                    .done(function(data) {
-                        if (_.isEmpty(data)) {
-                            remoteGradebookObj.showErrors(gettext('No results.'));
-                        } else if (!_.isEmpty(data.errors)) {
-                            remoteGradebookObj.showErrors(data.errors);
+                return $.ajax({
+                    type: 'POST',
+                    dataType: 'json',
+                    url: url,
+                    data: requestData || {}
+                })
+                .done(function(data) {
+                    if (_.isEmpty(data)) {
+                        remoteGradebookObj.showErrors(gettext('No results.'));
+                    } else if (!_.isEmpty(data.errors)) {
+                        remoteGradebookObj.showErrors(data.errors);
+                    } else {
+                        if (!_.isEmpty(data.datatable)) {
+                            remoteGradebookObj.showResults(remoteGradebookObj.datatableTemplate(data.datatable));
                         } else {
-                            if (!_.isEmpty(data.datatable)) {
-                                remoteGradebookObj.showResults(remoteGradebookObj.datatableTemplate(data.datatable));
-                            } else {
-                                remoteGradebookObj.showResults(data.message || '');
-                            }
+                            remoteGradebookObj.showResults(data.message || '');
                         }
-                    })
-                    .fail(function() {
-                        remoteGradebookObj.showErrors(gettext('Request failed.'));
-                    })
-                    .always(function() {
-                        $spinner.remove();
-                    });
+                    }
+                })
+                .fail(function() {
+                    remoteGradebookObj.showErrors(gettext('Request failed.'));
+                })
+                .always(function() {
+                    $spinner.remove();
                 });
+            }
+
+            function datatableClickHandler(event) {
+                var $el = $(event.target);
+                var requestData = event.data && _.isFunction(event.data.requestDataFunc)
+                    ? event.data.requestDataFunc($el)
+                    : {};
+                fetchAndRenderDatatable($el, requestData);
             }
 
             function getAssignmentNameForRequest() {
@@ -136,12 +144,64 @@
                 };
             }
 
-            addDatatableClickHandler(this.$list_remote_enrolled_students_btn);
-            addDatatableClickHandler(this.$list_remote_students_in_section_btn, getSectionNameForRequest);
-            addDatatableClickHandler(this.$list_remote_assign_btn);
-            addDatatableClickHandler(this.$list_course_assignments_btn);
-            addDatatableClickHandler(this.$display_assignment_grades_btn, getAssignmentNameForRequest);
-            addDatatableClickHandler(this.$export_assignment_grades_to_rg_btn, getAssignmentNameForRequest);
+            function getEnrollmentRequestData($el) {
+                return _.extend(
+                  {unenroll_current: $el.data('unenroll-current')},
+                  getSectionNameForRequest()
+                );
+            }
+
+            this.$list_remote_enrolled_students_btn.click(datatableClickHandler);
+            this.$list_remote_students_in_section_btn.click(
+                {requestDataFunc: getSectionNameForRequest},
+                datatableClickHandler
+            );
+            this.$merge_enrolled_students_in_section_btn.click(
+                {requestDataFunc: getEnrollmentRequestData},
+                datatableClickHandler
+            );
+            this.$overload_enrolled_students_in_section_btn.click(
+                {requestDataFunc: getEnrollmentRequestData},
+                function(event) {
+                    var $el = $(event.target);
+                    var url = $el.data('enrolled-users-endpoint');
+                    $.ajax({
+                        type: 'POST',
+                        dataType: 'json',
+                        url: url
+                    })
+                    .done(function(data) {
+                        var shouldOverload = true,
+                            warning;
+                        if (data.count > 0) {
+                            warning = gettext('WARNING: This will unenroll non-staff users from the course.\n\n') +
+                                gettext('Users ') + '(' + data.count + '): \n' +
+                                data.users.join(', ');
+                            if (data.count > data.users.length) {
+                                warning += ', ...';
+                            }
+                            // Using window.confirm because the instructor dashboard is apparently not
+                            // set up to use RequireJS. There are some custom confirmation components in
+                            // the codebase (e.g.: common/static/common/js/components/utils/view_utils.js),
+                            // but they're only usable via RequireJS.
+                            shouldOverload = window.confirm(warning);
+                        }
+                        if (shouldOverload) {
+                            datatableClickHandler(event);
+                        }
+                    });
+                }
+            );
+            this.$list_remote_assign_btn.click(datatableClickHandler);
+            this.$list_course_assignments_btn.click(datatableClickHandler);
+            this.$display_assignment_grades_btn.click(
+                {requestDataFunc: getAssignmentNameForRequest},
+                datatableClickHandler
+            );
+            this.$export_assignment_grades_to_rg_btn.click(
+                {requestDataFunc: getAssignmentNameForRequest},
+                datatableClickHandler
+            );
 
             this.$export_assignment_grades_csv_btn.click(function() {
                 var assignmentName = encodeURIComponent(remoteGradebookObj.$assignment_name_select.val());

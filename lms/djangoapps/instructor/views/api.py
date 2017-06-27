@@ -65,7 +65,7 @@ from shoppingcart.models import (
     CourseRegistrationCodeInvoiceItem,
 )
 from student.models import (
-    CourseEnrollment, unique_id_for_user, anonymous_id_for_user,
+    CourseEnrollment, CourseEnrollmentAllowed, unique_id_for_user, anonymous_id_for_user,
     UserProfile, Registration, EntranceExamConfiguration,
     ManualEnrollmentAudit, UNENROLLED_TO_ALLOWEDTOENROLL, ALLOWEDTOENROLL_TO_ENROLLED,
     ENROLLED_TO_ENROLLED, ENROLLED_TO_UNENROLLED, UNENROLLED_TO_ENROLLED,
@@ -2544,6 +2544,79 @@ def get_course_assignment_labels(course):
     return graded_item_labels
 
 
+def enroll_emails_in_course(emails, course_key):
+    """
+    Attempts to enroll all provided emails in a course. Emails without a corresponding
+    user have a CourseEnrollmentAllowed object created for the course.
+    """
+    results = {}
+    for email in emails:
+        user = User.objects.filter(email=email).first()
+        result = ''
+        if not user:
+            _, created = CourseEnrollmentAllowed.objects.get_or_create(
+                email=email,
+                course_id=course_key
+            )
+            if created:
+                result = 'User does not exist - created course enrollment permission'
+            else:
+                result = 'User does not exist - enrollment is already allowed'
+        elif not CourseEnrollment.is_enrolled(user, course_key):
+            try:
+                CourseEnrollment.enroll(user, course_key)
+                result = 'Enrolled user in the course'
+            except Exception as ex:
+                result = 'Failed to enroll - {}'.format(ex)
+        else:
+            result = 'User already enrolled'
+        results[email] = result
+    return results
+
+
+def get_enrolled_non_staff_users(course):
+    """
+    Returns an iterable of non-staff enrolled users for a given course
+    """
+    return filter(
+        lambda user: not has_access(user, 'staff', course),
+        CourseEnrollment.objects.users_enrolled_in(course.id)
+    )
+
+
+def unenroll_non_staff_users_in_course(course):
+    """
+    Unenrolls non-staff users in a course
+    """
+    results = {}
+    for enrolled_user in get_enrolled_non_staff_users(course):
+        has_staff_access = has_access(enrolled_user, 'staff', course)
+        if not has_staff_access:
+            CourseEnrollment.unenroll(enrolled_user, course.id)
+            result = 'Unenrolled user from the course'
+        else:
+            result = 'No action taken (staff user)'
+        results[enrolled_user.email] = result
+    return results
+
+
+@require_POST
+@ensure_csrf_cookie
+@cache_control(no_cache=True, no_store=True, must_revalidate=True)
+@require_level('staff')
+def get_non_staff_enrollments(request, course_id):
+    """
+    Returns user emails that are enrolled in a course and not staff
+    """
+    course_id = SlashSeparatedCourseKey.from_deprecated_string(course_id)
+    course = get_course_by_id(course_id)
+    enrolled_non_staff_users = list(get_enrolled_non_staff_users(course))
+    return JsonResponse({
+        'count': len(enrolled_non_staff_users),
+        'users': [user.email for user in enrolled_non_staff_users[0:20]]
+    })
+
+
 @require_POST
 @ensure_csrf_cookie
 @cache_control(no_cache=True, no_store=True, must_revalidate=True)
@@ -2603,6 +2676,40 @@ def list_remote_students_in_section(request, course_id):
     course = get_course_by_id(course_id)
     error_msg, datatable = _do_remote_gradebook_datatable(request.user, course, 'get-membership', section=section_name)
     datatable['title'] = _('Enrolled Students in Section in Remote Gradebook')
+    return JsonResponse({
+        'errors': error_msg,
+        'datatable': datatable
+    })
+
+
+@require_POST
+@ensure_csrf_cookie
+@cache_control(no_cache=True, no_store=True, must_revalidate=True)
+@require_level('staff')
+def add_enrollments_using_remote_gradebook(request, course_id):
+    """
+    """
+    unenroll_current = request.POST.get('unenroll_current', '').lower() == 'true'
+    section_name = request.POST.get('section_name', '')
+    course_id = SlashSeparatedCourseKey.from_deprecated_string(course_id)
+    course = get_course_by_id(course_id)
+    error_msg, rg_datatable = _do_remote_gradebook_datatable(request.user, course, 'get-membership', section=section_name)
+    datatable = {}
+    if not error_msg:
+        datarow = []
+        rg_student_emails = [x['email'] for x in rg_datatable['retdata']]
+        enrollment_results = enroll_emails_in_course(rg_student_emails, course_id)
+        datarow.extend([[email, result] for email, result in enrollment_results.items()])
+
+        if unenroll_current:
+            unenrollment_results = unenroll_non_staff_users_in_course(course)
+            datarow.extend([[email, result] for email, result in unenrollment_results.items()])
+
+        datatable = dict(
+            header=['Email', 'Result'],
+            data=datarow,
+            title=_('Overload Enrollments from Remote Gradebook'),
+        )
     return JsonResponse({
         'errors': error_msg,
         'datatable': datatable
