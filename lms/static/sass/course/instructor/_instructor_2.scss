@@ -1344,7 +1344,11 @@
 
 // view - export grades
 // --------------------
-.instructor-dashboard-wrapper-2 section.idash-section#grade_export{
+.instructor-dashboard-wrapper-2 section.idash-section#remote_gradebook{
+  p.gradebook-name {
+    margin: 20px 0;
+  }
+
   table.stat_table {
     font-family: verdana, arial, sans-serif;
     font-size: 11px;
@@ -1360,6 +1364,7 @@
       border-color: #666666;
       background-color: #dedede;
     }
+
     td {
       border-width: 1px;
       padding: 8px;
@@ -1373,7 +1378,7 @@
     padding: 10px 0;
   }
 
-  #errors {
+  .errors {
     color: rgb(255, 0, 0);
   }
 }

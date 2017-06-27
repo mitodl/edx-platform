@@ -164,8 +164,8 @@ such that the value can be defined later than this assignment (file load order).
                 constructor: window.InstructorDashboard.sections.DataDownload,
                 $element: idashContent.find('.' + CSS_IDASH_SECTION + '#data_download')
             }, {
-                constructor: window.InstructorDashboard.sections.GradeExport,
-                $element: idashContent.find('.' + CSS_IDASH_SECTION + '#grade_export')
+                constructor: window.InstructorDashboard.sections.RemoteGradebook,
+                $element: idashContent.find('.' + CSS_IDASH_SECTION + '#remote_gradebook')
             }, {
                 constructor: window.InstructorDashboard.sections.ECommerce,
                 $element: idashContent.find('.' + CSS_IDASH_SECTION + '#e-commerce')
@@ -210,9 +210,13 @@ such that the value can be defined later than this assignment (file load order).
             var $element, constructor;
             constructor = _arg.constructor;
             $element = _arg.$element;
-            return plantTimeout(0, sectionsHaveLoaded.waitFor(function() {
-                return new constructor($element);
-            }));
+            if ($element.length > 0) {
+                return plantTimeout(0, sectionsHaveLoaded.waitFor(function () {
+                    return new constructor($element);
+                }));
+            } else {
+                return null;
+            }
         });
     };
 }).call(this);
