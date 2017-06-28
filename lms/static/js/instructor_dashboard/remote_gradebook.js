@@ -12,7 +12,10 @@
             this.$results = this.$section.find("#results");
             this.$errors = this.$section.find("#errors");
             this.$loading = this.$section.find(".loading");
+            this.$section_name_select = this.$section.find("#section-name");
             this.$assignment_name_select = this.$section.find("#assignment-name");
+            this.$list_remote_enrolled_students_btn = this.$section.find("input[name='list-remote-enrolled-students']");
+            this.$list_remote_students_in_section_btn = this.$section.find("input[name='list-remote-students-in-section']");
             this.$list_remote_assign_btn = this.$section.find("input[name='list-remote-assignments']");
             this.$list_course_assignments_btn = this.$section.find("input[name='list-course-assignments']");
             this.$display_assignment_grades_btn = this.$section.find("input[name='display-assignment-grades']");
@@ -133,6 +136,17 @@
                 };
             }
 
+            function getSectionNameForRequest() {
+                return {
+                    section_name: remoteGradebookObj.$section_name_select.val()
+                };
+            }
+
+            this.$list_remote_enrolled_students_btn.click(datatableClickHandler);
+            this.$list_remote_students_in_section_btn.click(
+                {requestDataFunc: getSectionNameForRequest},
+                datatableClickHandler
+            );
             this.$list_remote_assign_btn.click(datatableClickHandler);
             this.$list_course_assignments_btn.click(datatableClickHandler);
             this.$display_assignment_grades_btn.click(
@@ -155,6 +169,7 @@
                 }
             });
 
+            loadSelectBoxOptions(remoteGradebookObj.$section_name_select);
             loadSelectBoxOptions(remoteGradebookObj.$assignment_name_select);
         }
 
