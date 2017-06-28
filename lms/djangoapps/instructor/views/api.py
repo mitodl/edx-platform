@@ -11,6 +11,8 @@ import requests
 import logging
 import re
 import time
+from contextlib import contextmanager
+from collections import OrderedDict
 from itertools import ifilter
 from django.conf import settings
 from django.views.decorators.csrf import ensure_csrf_cookie
@@ -2540,6 +2542,71 @@ def get_course_assignment_labels(course):
                     u"{label} {index:02d}".format(label=label, index=i)
                 )
     return graded_item_labels
+
+
+@require_POST
+@ensure_csrf_cookie
+@cache_control(no_cache=True, no_store=True, must_revalidate=True)
+@require_level('staff')
+def get_remote_gradebook_sections(request, course_id):
+    """
+    Returns a datatable of students and whether or not there is a match for those students
+    in the remote gradebook
+    """
+    course_id = SlashSeparatedCourseKey.from_deprecated_string(course_id)
+    course = get_course_by_id(course_id)
+    error_msg, datatable = _do_remote_gradebook_datatable(request.user, course, 'get-sections')
+    return JsonResponse({
+        'errors': error_msg,
+        'data': [datarow[0] for datarow in datatable.get('data', [])]
+    })
+
+
+@require_POST
+@ensure_csrf_cookie
+@cache_control(no_cache=True, no_store=True, must_revalidate=True)
+@require_level('staff')
+def list_matching_remote_enrolled_students(request, course_id):
+    """
+    Returns a datatable of students and whether or not there is a match for those students
+    in the remote gradebook
+    """
+    course_id = SlashSeparatedCourseKey.from_deprecated_string(course_id)
+    course = get_course_by_id(course_id)
+    error_msg, rg_datatable = _do_remote_gradebook_datatable(request.user, course, 'get-membership')
+    datatable = {}
+    if not error_msg:
+        enrolled_students = CourseEnrollment.objects.users_enrolled_in(course.id)
+        rg_student_emails = [x['email'] for x in rg_datatable['retdata']]
+        has_match = lambda student: 'Yes' if student.email in rg_student_emails else 'No'
+        datatable = dict(
+            header=['Student  email', 'Match?'],
+            data=[[student.email, has_match(student)] for student in enrolled_students],
+            title=_('Enrolled Students Matching Remote Gradebook'),
+        )
+    return JsonResponse({
+        'errors': error_msg,
+        'datatable': datatable
+    })
+
+
+@require_POST
+@ensure_csrf_cookie
+@cache_control(no_cache=True, no_store=True, must_revalidate=True)
+@require_level('staff')
+def list_remote_students_in_section(request, course_id):
+    """
+    Returns a datatable of students in the remote gradebook that are enrolled in a specific section
+    """
+    section_name = request.POST.get('section_name', '')
+    course_id = SlashSeparatedCourseKey.from_deprecated_string(course_id)
+    course = get_course_by_id(course_id)
+    error_msg, datatable = _do_remote_gradebook_datatable(request.user, course, 'get-membership', section=section_name)
+    datatable['title'] = _('Enrolled Students in Section in Remote Gradebook')
+    return JsonResponse({
+        'errors': error_msg,
+        'datatable': datatable
+    })
 
 
 @require_POST
