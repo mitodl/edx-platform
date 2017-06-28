@@ -96,6 +96,18 @@ urlpatterns = patterns(
     url(r'problem_grade_report$',
         'lms.djangoapps.instructor.views.api.problem_grade_report', name="problem_grade_report"),
 
+    # Remote gradebook...
+    url(r'^get_assignment_names',
+        'lms.djangoapps.instructor.views.api.get_assignment_names', name="get_assignment_names"),
+    url(r'^list_remote_assignments',
+        'lms.djangoapps.instructor.views.api.list_remote_assignments', name="list_remote_assignments"),
+    url(r'^display_assignment_grades',
+        'lms.djangoapps.instructor.views.api.display_assignment_grades', name="display_assignment_grades"),
+    url(r'^export_assignment_grades_to_rg',
+        'lms.djangoapps.instructor.views.api.export_assignment_grades_to_rg', name="export_assignment_grades_to_rg"),
+    url(r'^export_assignment_grades_csv',
+        'lms.djangoapps.instructor.views.api.export_assignment_grades_csv', name="export_assignment_grades_csv"),
+
     # Financial Report downloads..
     url(r'^list_financial_report_downloads$',
         'lms.djangoapps.instructor.views.api.list_financial_report_downloads', name="list_financial_report_downloads"),
