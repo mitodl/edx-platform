@@ -210,6 +210,8 @@ FEATURES = {
         "certificate_status"
     ],
 
+    'ENABLE_INSTRUCTOR_REMOTE_GRADEBOOK_CONTROLS': False,
+
     # Turn off account locking if failed login attempts exceeds a limit
     'ENABLE_MAX_FAILED_LOGIN_ATTEMPTS': True,
 
@@ -3259,3 +3261,10 @@ COURSES_API_CACHE_TIMEOUT = 3600  # Value is in seconds
 
 ############## Settings for CourseGraph ############################
 COURSEGRAPH_JOB_QUEUE = LOW_PRIORITY_QUEUE
+
+
+############## Remote gradebook settings ######################
+
+REMOTE_GRADEBOOK = {}
+REMOTE_GRADEBOOK_USER = None
+REMOTE_GRADEBOOK_PASSWORD = None

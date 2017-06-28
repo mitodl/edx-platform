@@ -1020,6 +1020,12 @@ ICP_LICENSE = ENV_TOKENS.get('ICP_LICENSE', None)
 ############## Settings for CourseGraph ############################
 COURSEGRAPH_JOB_QUEUE = ENV_TOKENS.get('COURSEGRAPH_JOB_QUEUE', LOW_PRIORITY_QUEUE)
 
+############## Remote gradebook settings ######################
+
+REMOTE_GRADEBOOK = ENV_TOKENS.get('REMOTE_GRADEBOOK', REMOTE_GRADEBOOK)
+REMOTE_GRADEBOOK_USER = AUTH_TOKENS.get('REMOTE_GRADEBOOK_USER', REMOTE_GRADEBOOK_USER)
+REMOTE_GRADEBOOK_PASSWORD = AUTH_TOKENS.get('REMOTE_GRADEBOOK_PASSWORD', REMOTE_GRADEBOOK_PASSWORD)
+
 ########################## Parental controls config  #######################
 
 # The age at which a learner no longer requires parental consent, or None
