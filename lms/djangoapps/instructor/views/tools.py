@@ -246,3 +246,20 @@ def add_block_ids(payload):
         for ele in payload['data']:
             if 'module_id' in ele:
                 ele['block_id'] = UsageKey.from_string(ele['module_id']).block_id
+
+
+def get_assignment_type_label(course, assignment_type):
+    """
+    Gets the label for an assignment based on its type and the grading policy of the course.
+    Returns the short label if one exists, or returns the full assignment type as the label
+    if (a) the grading policy doesn't cover this assignment type, or (b) the grading policy
+    has a blank short label for this assignment type
+    """
+    try:
+        matching_policy = next(
+            grader for grader in course.grading_policy['GRADER']
+            if grader['type'] == assignment_type
+        )
+        return matching_policy['short_label'] or assignment_type
+    except StopIteration:
+        return assignment_type
