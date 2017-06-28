@@ -8,9 +8,12 @@ An "xserver" is a web-based server that is part of the edX ecosystem.  There are
 
 2. Setup
 
-The remote gradebook xserver should be specified in the lms.envs configuration using
+The remote gradebook xserver should be specified in the lms.envs configuration:
 
-    FEATURES[REMOTE_GRADEBOOK_URL]
+    "REMOTE_GRADEBOOK": {
+      "URL": "http://remote.gradebook.com",
+      "DEFAULT_NAME": "SOME_GRADEBOOK_NAME" # Optional
+    }
 
 Each course, in addition, should define the name of the gradebook being used.  A class "section" may also be specified.  This goes in the policy.json file, eg:
 
@@ -18,6 +21,8 @@ Each course, in addition, should define the name of the gradebook being used.  A
        "name" : "STELLAR:/project/edxdemosite",
        "section" : "r01"
         },
+        
+If the remote gradebook name isn't specified in this way, the DEFAULT_NAME value above will be used.
 
 3. The API for the remote gradebook xserver is an almost RESTful service model, which only employs POSTs, to the xserver url, with form data for the fields:
 
