@@ -643,8 +643,23 @@ def _section_remote_gradebook(course):
         'section_display_name': _('Remote Gradebook'),
         'course': course,
         'remote_gradebook_name': rg_name,
+        'get_remote_gradebook_sections_url': reverse(
+            'get_remote_gradebook_sections', kwargs={'course_id': unicode(course.id)}
+        ),
         'get_assignment_names_url': reverse(
             'get_assignment_names', kwargs={'course_id': unicode(course.id)}
+        ),
+        'get_non_staff_enrollments_url': reverse(
+            'get_non_staff_enrollments', kwargs={'course_id': unicode(course.id)}
+        ),
+        'list_remote_enrolled_students_url': reverse(
+            'list_remote_enrolled_students', kwargs={'course_id': unicode(course.id)}
+        ),
+        'list_remote_students_in_section_url': reverse(
+            'list_remote_students_in_section', kwargs={'course_id': unicode(course.id)}
+        ),
+        'add_enrollments_using_remote_gradebook_url': reverse(
+            'add_enrollments_using_remote_gradebook', kwargs={'course_id': unicode(course.id)}
         ),
         'list_remote_assignments_url': reverse(
             'list_remote_assignments', kwargs={'course_id': unicode(course.id)}
@@ -657,6 +672,14 @@ def _section_remote_gradebook(course):
         ),
         'export_assignment_grades_csv_url': reverse(
             'export_assignment_grades_csv', kwargs={'course_id': unicode(course.id)}
+        ),
+        'list_instructor_tasks_url': '{}?include_remote_gradebook=true'.format(
+            reverse(
+                'list_instructor_tasks', kwargs={'course_id': unicode(course.id)}
+            )
+        ),
+        'list_report_downloads_url': reverse(
+            'list_report_downloads', kwargs={'course_id': unicode(course.id)}
         ),
     }
     return section_data
