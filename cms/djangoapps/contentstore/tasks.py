@@ -12,6 +12,7 @@ from django.contrib.auth.models import User
 
 from contentstore.courseware_index import CoursewareSearchIndexer, LibrarySearchIndexer, SearchIndexingError
 from contentstore.utils import initialize_permissions
+from contentstore.git_export_utils import export_to_git, GitExportError
 from course_action_state.models import CourseRerunState
 from opaque_keys.edx.keys import CourseKey
 from xmodule.course_module import CourseFields
@@ -125,3 +126,17 @@ def push_course_update_task(course_key_string, course_subscription_id, course_di
     # TODO Use edx-notifications library instead (MA-638).
     from .push_notification import send_push_course_update
     send_push_course_update(course_key_string, course_subscription_id, course_display_name)
+
+
+@task()
+def async_export_to_git(course_module, user=None):
+    """
+    Exports a course to Git.
+    """
+    try:
+        export_to_git(course_module.id, course_module.giturl, user=user)
+        LOGGER.debug('Exported course content to git: %s', course_module.id)
+    except GitExportError as ex:
+        LOGGER.error('Failed to export course content to git: %s', ex)
+    except Exception as ex:
+        LOGGER.error('Unknown error occured while exporting course content to git: %s', ex)
