@@ -11,8 +11,6 @@ import requests
 import logging
 import re
 import time
-from contextlib import contextmanager
-from collections import OrderedDict
 from itertools import ifilter
 from django.conf import settings
 from django.views.decorators.csrf import ensure_csrf_cookie
@@ -65,7 +63,7 @@ from shoppingcart.models import (
     CourseRegistrationCodeInvoiceItem,
 )
 from student.models import (
-    CourseEnrollment, unique_id_for_user, anonymous_id_for_user,
+    CourseEnrollment, CourseEnrollmentAllowed, unique_id_for_user, anonymous_id_for_user,
     UserProfile, Registration, EntranceExamConfiguration,
     ManualEnrollmentAudit, UNENROLLED_TO_ALLOWEDTOENROLL, ALLOWEDTOENROLL_TO_ENROLLED,
     ENROLLED_TO_ENROLLED, ENROLLED_TO_UNENROLLED, UNENROLLED_TO_ENROLLED,
@@ -112,6 +110,7 @@ from .tools import (
     strip_if_string,
     get_assignment_type_label,
 )
+from opaque_keys.edx.locator import CourseLocator
 from opaque_keys.edx.keys import CourseKey, UsageKey
 from opaque_keys.edx.locations import SlashSeparatedCourseKey
 from opaque_keys import InvalidKeyError
@@ -2544,6 +2543,79 @@ def get_course_assignment_labels(course):
     return graded_item_labels
 
 
+def enroll_emails_in_course(emails, course_key):
+    """
+    Attempts to enroll all provided emails in a course. Emails without a corresponding
+    user have a CourseEnrollmentAllowed object created for the course.
+    """
+    results = {}
+    for email in emails:
+        user = User.objects.filter(email=email).first()
+        result = ''
+        if not user:
+            _, created = CourseEnrollmentAllowed.objects.get_or_create(
+                email=email,
+                course_id=course_key
+            )
+            if created:
+                result = 'User does not exist - created course enrollment permission'
+            else:
+                result = 'User does not exist - enrollment is already allowed'
+        elif not CourseEnrollment.is_enrolled(user, course_key):
+            try:
+                CourseEnrollment.enroll(user, course_key)
+                result = 'Enrolled user in the course'
+            except Exception as ex:
+                result = 'Failed to enroll - {}'.format(ex)
+        else:
+            result = 'User already enrolled'
+        results[email] = result
+    return results
+
+
+def get_enrolled_non_staff_users(course):
+    """
+    Returns an iterable of non-staff enrolled users for a given course
+    """
+    return filter(
+        lambda user: not has_access(user, 'staff', course),
+        CourseEnrollment.objects.users_enrolled_in(course.id)
+    )
+
+
+def unenroll_non_staff_users_in_course(course):
+    """
+    Unenrolls non-staff users in a course
+    """
+    results = {}
+    for enrolled_user in get_enrolled_non_staff_users(course):
+        has_staff_access = has_access(enrolled_user, 'staff', course)
+        if not has_staff_access:
+            CourseEnrollment.unenroll(enrolled_user, course.id)
+            result = 'Unenrolled user from the course'
+        else:
+            result = 'No action taken (staff user)'
+        results[enrolled_user.email] = result
+    return results
+
+
+@require_POST
+@ensure_csrf_cookie
+@cache_control(no_cache=True, no_store=True, must_revalidate=True)
+@require_level('staff')
+def get_non_staff_enrollments(request, course_id):
+    """
+    Returns user emails that are enrolled in a course and not staff
+    """
+    course_id = CourseLocator.from_string(course_id)
+    course = get_course_by_id(course_id)
+    enrolled_non_staff_users = list(get_enrolled_non_staff_users(course))
+    return JsonResponse({
+        'count': len(enrolled_non_staff_users),
+        'users': [user.email for user in enrolled_non_staff_users[0:20]]
+    })
+
+
 @require_POST
 @ensure_csrf_cookie
 @cache_control(no_cache=True, no_store=True, must_revalidate=True)
@@ -2553,7 +2625,7 @@ def get_remote_gradebook_sections(request, course_id):
     Returns a datatable of students and whether or not there is a match for those students
     in the remote gradebook
     """
-    course_id = SlashSeparatedCourseKey.from_deprecated_string(course_id)
+    course_id = CourseLocator.from_string(course_id)
     course = get_course_by_id(course_id)
     error_msg, datatable = _do_remote_gradebook_datatable(request.user, course, 'get-sections')
     return JsonResponse({
@@ -2571,7 +2643,7 @@ def list_matching_remote_enrolled_students(request, course_id):
     Returns a datatable of students and whether or not there is a match for those students
     in the remote gradebook
     """
-    course_id = SlashSeparatedCourseKey.from_deprecated_string(course_id)
+    course_id = CourseLocator.from_string(course_id)
     course = get_course_by_id(course_id)
     error_msg, rg_datatable = _do_remote_gradebook_datatable(request.user, course, 'get-membership')
     datatable = {}
@@ -2599,10 +2671,44 @@ def list_remote_students_in_section(request, course_id):
     Returns a datatable of students in the remote gradebook that are enrolled in a specific section
     """
     section_name = request.POST.get('section_name', '')
-    course_id = SlashSeparatedCourseKey.from_deprecated_string(course_id)
+    course_id = CourseLocator.from_string(course_id)
     course = get_course_by_id(course_id)
     error_msg, datatable = _do_remote_gradebook_datatable(request.user, course, 'get-membership', section=section_name)
     datatable['title'] = _('Enrolled Students in Section in Remote Gradebook')
+    return JsonResponse({
+        'errors': error_msg,
+        'datatable': datatable
+    })
+
+
+@require_POST
+@ensure_csrf_cookie
+@cache_control(no_cache=True, no_store=True, must_revalidate=True)
+@require_level('staff')
+def add_enrollments_using_remote_gradebook(request, course_id):
+    """
+    """
+    unenroll_current = request.POST.get('unenroll_current', '').lower() == 'true'
+    section_name = request.POST.get('section_name', '')
+    course_id = CourseLocator.from_string(course_id)
+    course = get_course_by_id(course_id)
+    error_msg, rg_datatable = _do_remote_gradebook_datatable(request.user, course, 'get-membership', section=section_name)
+    datatable = {}
+    if not error_msg:
+        datarow = []
+        rg_student_emails = [x['email'] for x in rg_datatable['retdata']]
+        enrollment_results = enroll_emails_in_course(rg_student_emails, course_id)
+        datarow.extend([[email, result] for email, result in enrollment_results.items()])
+
+        if unenroll_current:
+            unenrollment_results = unenroll_non_staff_users_in_course(course)
+            datarow.extend([[email, result] for email, result in unenrollment_results.items()])
+
+        datatable = dict(
+            header=['Email', 'Result'],
+            data=datarow,
+            title=_('Overload Enrollments from Remote Gradebook'),
+        )
     return JsonResponse({
         'errors': error_msg,
         'datatable': datatable
@@ -2617,7 +2723,7 @@ def get_assignment_names(request, course_id):
     """
     Returns a datatable of the assignments available for this course
     """
-    course_id = SlashSeparatedCourseKey.from_deprecated_string(course_id)
+    course_id = CourseLocator.from_string(course_id)
     course = get_course_by_id(course_id)
     assignment_names = get_course_assignment_labels(course)
     return JsonResponse({
@@ -2633,7 +2739,7 @@ def list_remote_assignments(request, course_id):
     """
     Returns a datatable of the assignments available in the remote gradebook
     """
-    course_id = SlashSeparatedCourseKey.from_deprecated_string(course_id)
+    course_id = CourseLocator.from_string(course_id)
     course = get_course_by_id(course_id)
     error_msg, datatable = _do_remote_gradebook_datatable(request.user, course, 'get-assignments')
     datatable['title'] = _('Remote Gradebook Assignments')
@@ -2670,7 +2776,7 @@ def display_assignment_grades(request, course_id):
     """
     Returns a datatable of students' grades for an assignment in a course that matches a given course id
     """
-    course_id = SlashSeparatedCourseKey.from_deprecated_string(course_id)
+    course_id = CourseLocator.from_string(course_id)
     course = get_course_by_id(course_id)
     error_msg, datatable = _get_assignment_grade_datatable(course, request.POST.get('assignment_name', ''))
     return JsonResponse({
@@ -2688,7 +2794,7 @@ def export_assignment_grades_to_rg(request, course_id):
     Exports students' grades for an assignment to the remote gradebook, then returns a
     datatable of those grades
     """
-    course_id = SlashSeparatedCourseKey.from_deprecated_string(course_id)
+    course_id = CourseLocator.from_string(course_id)
     course = get_course_by_id(course_id)
     assignment_name = request.POST.get('assignment_name', '')
     error_msg, datatable = _get_assignment_grade_datatable(course, assignment_name)
@@ -2715,14 +2821,17 @@ def export_assignment_grades_csv(request, course_id):
     """
     Creates a CSV of students' grades for an assignment and returns that CSV as an HTTP response
     """
-    course_id = SlashSeparatedCourseKey.from_deprecated_string(course_id)
+    course_id = CourseLocator.from_string(course_id)
     course = get_course_by_id(course_id)
     assignment_name = request.GET.get('assignment_name', '')
     error_msg, datatable = _get_assignment_grade_datatable(course, assignment_name)
     if error_msg:
         return HttpResponseNotFound(error_msg)
     else:
-        filename = 'grades {name}.csv'.format(name=assignment_name)
+        filename = 'grades {course_id} {name}.csv'.format(
+            course_id=course_id.to_deprecated_string(),
+            name=assignment_name
+        )
         response = HttpResponse(content_type='text/csv')
         response['Content-Disposition'] = (u'attachment; filename={0}'.format(filename)).encode('utf-8')
         create_datatable_csv(response, datatable)

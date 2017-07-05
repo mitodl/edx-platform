@@ -618,11 +618,17 @@ def _section_remote_gradebook(course):
         'get_assignment_names_url': reverse(
             'get_assignment_names', kwargs={'course_id': unicode(course.id)}
         ),
+        'get_non_staff_enrollments_url': reverse(
+            'get_non_staff_enrollments', kwargs={'course_id': unicode(course.id)}
+        ),
         'list_remote_enrolled_students_url': reverse(
             'list_remote_enrolled_students', kwargs={'course_id': unicode(course.id)}
         ),
         'list_remote_students_in_section_url': reverse(
             'list_remote_students_in_section', kwargs={'course_id': unicode(course.id)}
+        ),
+        'add_enrollments_using_remote_gradebook_url': reverse(
+            'add_enrollments_using_remote_gradebook', kwargs={'course_id': unicode(course.id)}
         ),
         'list_remote_assignments_url': reverse(
             'list_remote_assignments', kwargs={'course_id': unicode(course.id)}

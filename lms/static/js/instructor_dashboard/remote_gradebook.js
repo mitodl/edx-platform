@@ -16,6 +16,8 @@
             this.$assignment_name_select = this.$section.find("#assignment-name");
             this.$list_remote_enrolled_students_btn = this.$section.find("input[name='list-remote-enrolled-students']");
             this.$list_remote_students_in_section_btn = this.$section.find("input[name='list-remote-students-in-section']");
+            this.$merge_enrolled_students_in_section_btn = this.$section.find("input[name='merge-enrolled-students-in-section']");
+            this.$overload_enrolled_students_in_section_btn = this.$section.find("input[name='overload-enrolled-students-in-section']");
             this.$list_remote_assign_btn = this.$section.find("input[name='list-remote-assignments']");
             this.$list_course_assignments_btn = this.$section.find("input[name='list-course-assignments']");
             this.$display_assignment_grades_btn = this.$section.find("input[name='display-assignment-grades']");
@@ -142,10 +144,53 @@
                 };
             }
 
+            function getEnrollmentRequestData($el) {
+                return _.extend(
+                  {unenroll_current: $el.data('unenroll-current')},
+                  getSectionNameForRequest()
+                );
+            }
+
             this.$list_remote_enrolled_students_btn.click(datatableClickHandler);
             this.$list_remote_students_in_section_btn.click(
                 {requestDataFunc: getSectionNameForRequest},
                 datatableClickHandler
+            );
+            this.$merge_enrolled_students_in_section_btn.click(
+                {requestDataFunc: getEnrollmentRequestData},
+                datatableClickHandler
+            );
+            this.$overload_enrolled_students_in_section_btn.click(
+                {requestDataFunc: getEnrollmentRequestData},
+                function(event) {
+                    var $el = $(event.target);
+                    var url = $el.data('enrolled-users-endpoint');
+                    $.ajax({
+                        type: 'POST',
+                        dataType: 'json',
+                        url: url
+                    })
+                    .done(function(data) {
+                        var shouldOverload = true,
+                            warning;
+                        if (data.count > 0) {
+                            warning = gettext('WARNING: This will unenroll non-staff users from the course.\n\n') +
+                                gettext('Users ') + '(' + data.count + '): \n' +
+                                data.users.join(', ');
+                            if (data.count > data.users.length) {
+                                warning += ', ...';
+                            }
+                            // Using window.confirm because the instructor dashboard is apparently not
+                            // set up to use RequireJS. There are some custom confirmation components in
+                            // the codebase (e.g.: common/static/common/js/components/utils/view_utils.js),
+                            // but they're only usable via RequireJS.
+                            shouldOverload = window.confirm(warning);
+                        }
+                        if (shouldOverload) {
+                            datatableClickHandler(event);
+                        }
+                    });
+                }
             );
             this.$list_remote_assign_btn.click(datatableClickHandler);
             this.$list_course_assignments_btn.click(datatableClickHandler);
