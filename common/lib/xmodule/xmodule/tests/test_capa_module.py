@@ -2351,6 +2351,27 @@ class CapaDescriptorTest(unittest.TestCase):
             }
         )
 
+    def test_indexing_non_latin_problem(self):
+        sample_text_input_problem_xml = textwrap.dedent("""
+            <problem>
+                <script type="text/python">FX1_VAL='Καλημέρα'</script>
+                <p>Δοκιμή με μεταβλητές με Ελληνικούς χαρακτήρες μέσα σε python: $FX1_VAL</p>
+            </problem>
+        """)
+        name = "Non latin Input"
+        descriptor = self._create_descriptor(sample_text_input_problem_xml, name=name)
+        capa_content = " FX1_VAL='Καλημέρα' Δοκιμή με μεταβλητές με Ελληνικούς χαρακτήρες μέσα σε python: $FX1_VAL "
+        self.assertEquals(
+            descriptor.index_dictionary(), {
+                'content_type': CapaDescriptor.INDEX_CONTENT_TYPE,
+                'problem_types': [],
+                'content': {
+                    'display_name': name,
+                    'capa_content': capa_content
+                }
+            }
+        )
+
     def test_indexing_checkboxes_with_hints_and_feedback(self):
         name = "Checkboxes with Hints and Feedback"
         descriptor = self._create_descriptor(self.sample_checkboxes_with_hints_and_feedback_problem_xml, name=name)
