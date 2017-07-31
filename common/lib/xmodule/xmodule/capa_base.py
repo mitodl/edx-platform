@@ -700,7 +700,7 @@ class CapaMixin(ScorableXBlockMixin, CapaFields):
 
         content = {
             'name': self.display_name_with_default,
-            'html': html,
+            'html': html.decode('utf8').encode('ascii', 'xmlcharrefreplace'),
             'weight': self.weight,
         }
 
