@@ -18,18 +18,19 @@ ${_("To access the course visit {course_about_url} and register for the course."
 % endif
 % else:
 
-${_("To finish your registration, please visit {registration_url} and fill "
+${_("To finish your registration, please visit {site_name}/dashboard You will need to "
+        "login with Touchstone to access this page. If you do not have a Touchstone "
+	"account, please contact your instructor for detailed directions."
 	"out the registration form making sure to use {email_address} in the E-mail field.").format(
-		registration_url=registration_url,
-		email_address=email_address
+		site_name=site_name
 	)}
 % if auto_enroll:
-${_("Once you have registered and activated your account, you will see "
+${_("Once you have logged in with Touchstone, you will see "
 	"{course_name} listed on your dashboard.").format(
 		course_name=display_name or course.display_name_with_default_escaped
 	)}
 % elif course_about_url is not None:
-${_("Once you have registered and activated your account, visit {course_about_url} "
+${_("Once you have logged in with Touchstone, visit {course_about_url} "
 	"to join the course.").format(course_about_url=course_about_url)}
 % else:
 ${_("You can then enroll in {course_name}.").format(course_name=display_name or course.display_name_with_default_escaped)}
