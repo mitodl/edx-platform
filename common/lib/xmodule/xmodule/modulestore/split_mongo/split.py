@@ -1903,7 +1903,7 @@ class SplitMongoModuleStore(SplitBulkWriteMixin, ModuleStoreWriteBase):
                 user_id,
                 BlockKey(
                     root_category,
-                    root_block_id or SplitMongoModuleStore.DEFAULT_ROOT_COURSE_BLOCK_ID,
+                    root_block_id or locator.run or SplitMongoModuleStore.DEFAULT_ROOT_COURSE_BLOCK_ID,
                 ),
                 block_fields,
                 definition_id
