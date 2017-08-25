@@ -135,7 +135,7 @@ def async_export_to_git(course_module, user=None):
     """
     try:
         export_to_git(course_module.id, course_module.giturl, user=user)
-        LOGGER.debug('Exported course content to git: %s', course_module.id)
+        LOGGER.info('Exported course content to git: %s', course_module.id)
     except GitExportError as ex:
         LOGGER.error('Failed to export course content to git: %s', ex)
     except Exception as ex:
