@@ -40,6 +40,7 @@ from student.models import CourseEnrollment, UserProfile, Registration
 import track.views
 from xmodule.modulestore.django import modulestore
 from opaque_keys.edx.locations import SlashSeparatedCourseKey
+from opaque_keys.edx.locator import CourseLocator
 
 
 log = logging.getLogger(__name__)
@@ -625,8 +626,16 @@ class GitLogs(TemplateView):
             try:
                 course = get_course_by_id(course_id)
             except Exception:
-                log.info('Cannot find course %s', course_id)
-                raise Http404
+                course_key = CourseLocator(
+                    org=course_id.org,
+                    course=course_id.course,
+                    run=course_id.run
+                )
+                try:
+                    course = get_course_by_id(course_key)
+                except Exception:
+                    log.info('Cannot find course %s', course_id)
+                    raise Http404
 
             # Allow only course team, instructors, and staff
             if not (request.user.is_staff or
