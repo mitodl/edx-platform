@@ -18,6 +18,7 @@ import mongoengine
 
 from dashboard.models import CourseImportLog
 from opaque_keys import InvalidKeyError
+from opaque_keys.edx.locator import CourseLocator
 from opaque_keys.edx.keys import CourseKey
 from opaque_keys.edx.locations import SlashSeparatedCourseKey
 
@@ -297,8 +298,14 @@ def add_repo(repo, rdir_in, branch=None):
         course_id = match.group(1)
         try:
             course_key = CourseKey.from_string(course_id)
+            course_key = CourseLocator(
+                org=course_key.org,
+                course=course_key.course,
+                run=course_key.run
+            )
         except InvalidKeyError:
             course_key = SlashSeparatedCourseKey.from_deprecated_string(course_id)
+
         cdir = '{0}/{1}'.format(git_repo_dir, course_key.course)
         log.debug('Studio course dir = %s', cdir)
 
