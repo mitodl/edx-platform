@@ -40,6 +40,7 @@ from openedx.core.djangoapps.external_auth.views import generate_password
 from student.models import CourseEnrollment, Registration, UserProfile
 from student.roles import CourseInstructorRole, CourseStaffRole
 from xmodule.modulestore.django import modulestore
+from opaque_keys.edx.locator import CourseLocator
 
 log = logging.getLogger(__name__)
 
@@ -624,8 +625,16 @@ class GitLogs(TemplateView):
             try:
                 course = get_course_by_id(course_id)
             except Exception:
-                log.info('Cannot find course %s', course_id)
-                raise Http404
+                course_key = CourseLocator(
+                    org=course_id.org,
+                    course=course_id.course,
+                    run=course_id.run
+                )
+                try:
+                    course = get_course_by_id(course_key)
+                except Exception:
+                    log.info('Cannot find course %s', course_id)
+                    raise Http404
 
             # Allow only course team, instructors, and staff
             if not (request.user.is_staff or
