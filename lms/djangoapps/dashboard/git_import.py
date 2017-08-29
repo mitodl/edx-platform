@@ -16,6 +16,7 @@ from django.utils import timezone
 from django.utils.translation import ugettext_lazy as _
 import mongoengine
 
+from courseware.courses import get_course_by_id
 from dashboard.models import CourseImportLog
 from opaque_keys import InvalidKeyError
 from opaque_keys.edx.locator import CourseLocator
@@ -298,13 +299,17 @@ def add_repo(repo, rdir_in, branch=None):
         course_id = match.group(1)
         try:
             course_key = CourseKey.from_string(course_id)
+        except InvalidKeyError:
+            course_key = SlashSeparatedCourseKey.from_deprecated_string(course_id)
+
+        try:
+            get_course_by_id(course_key)
+        except Exception:
             course_key = CourseLocator(
                 org=course_key.org,
                 course=course_key.course,
                 run=course_key.run
             )
-        except InvalidKeyError:
-            course_key = SlashSeparatedCourseKey.from_deprecated_string(course_id)
 
         cdir = '{0}/{1}'.format(git_repo_dir, course_key.course)
         log.debug('Studio course dir = %s', cdir)
