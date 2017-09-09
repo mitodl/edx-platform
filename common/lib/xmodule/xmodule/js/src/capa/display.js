@@ -684,6 +684,7 @@
                 var answers;
                 answers = response.answers;
                 $.each(answers, function(key, value) {
+                    key = key.replace(":", "\\:");      // fix for courses which use url_names with colons, e.g. problem:question1
                     var answer, choice, i, len, results;
                     if ($.isArray(value)) {
                         results = [];
@@ -1037,6 +1038,7 @@
                 var answer, choice, inputId, i, len, results, $element;
                 $element = $(element);
                 inputId = $element.attr('id').replace(/inputtype_/, '');
+                inputId = inputId.replace(":", "\\:");        // fix for courses which use url_names with colons, e.g. problem:question1
                 answer = answers[inputId];
                 results = [];
                 for (i = 0, len = answer.length; i < len; i++) {
