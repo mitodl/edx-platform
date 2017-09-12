@@ -2,7 +2,19 @@
 
 (function($, _) {
     'use strict';
-    var RemoteGradebook;
+    var RemoteGradebook, PendingInstructorTasks, ReportDownloads, statusAjaxError;
+
+    statusAjaxError = function() {
+        return window.InstructorDashboard.util.statusAjaxError.apply(this, arguments);
+    };
+
+    PendingInstructorTasks = function() {
+        return window.InstructorDashboard.util.PendingInstructorTasks;
+    };
+
+    ReportDownloads = function() {
+        return window.InstructorDashboard.util.ReportDownloads;
+    };
 
     RemoteGradebook = (function() {
         function InstructorDashboardRemoteGradebook($section) {
@@ -23,7 +35,9 @@
             this.$display_assignment_grades_btn = this.$section.find("input[name='display-assignment-grades']");
             this.$export_assignment_grades_to_rg_btn = this.$section.find("input[name='export-assignment-grades-to-rg']");
             this.$export_assignment_grades_csv_btn = this.$section.find("input[name='export-assignment-grades-csv']");
-
+            this.report_downloads = new (ReportDownloads())(this.$section);
+            this.instructor_tasks = new (PendingInstructorTasks())(this.$section);
+            this.clear_display();
             this.datatableTemplate = _.template($('#html-datatable-tpl').text());
 
             this.showResults = function(resultHTML) {
@@ -199,16 +213,63 @@
                 datatableClickHandler
             );
             this.$export_assignment_grades_to_rg_btn.click(
-                {requestDataFunc: getAssignmentNameForRequest},
-                datatableClickHandler
-            );
+                function() {
+                var assignmentName = encodeURIComponent(remoteGradebookObj.$assignment_name_select.val());
+                if (assignmentName) {
+                   var url = remoteGradebookObj.$export_assignment_grades_to_rg_btn.data('endpoint')
+                        + '?assignment_name='
+                        + assignmentName;
+                   remoteGradebookObj.clear_display();
+                   return $.ajax({
+                        type: 'GET',
+                        dataType: 'json',
+                        url: url,
+                        error: function() {
+                            remoteGradebookObj.showErrors(
+                                gettext('Error posting grades to remote grade book. Please try again.')
+                            );
+                            return $('.msg-error').css({
+                                display: 'block'
+                            });
+                        },
+                        success: function(data) {
+                            remoteGradebookObj.showResults(data.status);
+                            return $('.msg-confirm').css({
+                                display: 'block'
+                            });
+                        }
+                   });
+                } else {
+                    remoteGradebookObj.showErrors(gettext('Assignment name must be specified.'));
+                }
+            });
 
             this.$export_assignment_grades_csv_btn.click(function() {
                 var assignmentName = encodeURIComponent(remoteGradebookObj.$assignment_name_select.val());
                 if (assignmentName) {
-                    location.href = remoteGradebookObj.$export_assignment_grades_csv_btn.data('endpoint')
+                   var url = remoteGradebookObj.$export_assignment_grades_csv_btn.data('endpoint')
                         + '?assignment_name='
                         + assignmentName;
+                   remoteGradebookObj.clear_display();
+                   return $.ajax({
+                        type: 'GET',
+                        dataType: 'json',
+                        url: url,
+                        error: function() {
+                            remoteGradebookObj.showErrors(
+                                gettext('Error generating grades. Please try again.')
+                            );
+                            return $('.msg-error').css({
+                                display: 'block'
+                            });
+                        },
+                        success: function(data) {
+                            remoteGradebookObj.showResults(data.status);
+                            return $('.msg-confirm').css({
+                                display: 'block'
+                            });
+                        }
+                   });
                 } else {
                     remoteGradebookObj.showErrors(gettext('Assignment name must be specified.'));
                 }
@@ -219,9 +280,27 @@
         }
 
         InstructorDashboardRemoteGradebook.prototype.onClickTitle = function() {
+            this.clear_display();
+            this.instructor_tasks.task_poller.start();
+            return this.report_downloads.downloads_poller.start();
+        };
+
+        InstructorDashboardRemoteGradebook.prototype.onExit = function() {
+            this.instructor_tasks.task_poller.stop();
+            return this.report_downloads.downloads_poller.stop();
+        };
+
+        InstructorDashboardRemoteGradebook.prototype.clear_display = function() {
             this.$errors.empty();
             this.$results.empty();
+            $('.msg-confirm').css({
+                display: 'none'
+            });
+            return $('.msg-error').css({
+                display: 'none'
+            });
         };
+
 
         return InstructorDashboardRemoteGradebook;
     }());

@@ -6,6 +6,7 @@ already been submitted, filtered either by running state or input
 arguments.
 
 """
+import datetime
 from collections import Counter
 import hashlib
 
@@ -31,6 +32,8 @@ from lms.djangoapps.instructor_task.tasks import (
     generate_certificates,
     proctored_exam_results_csv,
     export_ora2_data,
+    export_assignment_grades_csv_task,
+    export_grades_to_rgb_task,
 )
 
 from certificates.models import CertificateGenerationHistory
@@ -46,6 +49,9 @@ from bulk_email.models import CourseEmail
 from util import milestones_helpers
 
 
+TASK_TYPE_EXPORT_GRADES_TO_RGB = "export_grades_to_rgb"
+
+
 class SpecificStudentIdMissingError(Exception):
     """
     Exception indicating that a student id was not provided when generating a certificate for a specific student.
@@ -53,7 +59,7 @@ class SpecificStudentIdMissingError(Exception):
     pass
 
 
-def get_running_instructor_tasks(course_id):
+def get_running_instructor_tasks(course_id, user=None):
     """
     Returns a query of InstructorTask objects of running tasks for a given course.
 
@@ -63,7 +69,23 @@ def get_running_instructor_tasks(course_id):
     # exclude states that are "ready" (i.e. not "running", e.g. failure, success, revoked):
     for state in READY_STATES:
         instructor_tasks = instructor_tasks.exclude(task_state=state)
-    return instructor_tasks.order_by('-id')
+
+    instructor_tasks = instructor_tasks.order_by('-id')
+
+    # list down remote grade book tasks
+    now = datetime.datetime.now()
+    rgb_tasks = InstructorTask.objects.filter(
+        course_id=course_id,
+        task_state__icontains="success",
+        task_type=TASK_TYPE_EXPORT_GRADES_TO_RGB,
+        updated__lte=now,
+        updated__gte=now - datetime.timedelta(days=5)
+    ).order_by('-id')
+
+    if user is not None:
+        rgb_tasks = rgb_tasks.filter(requester=user)
+
+    return (instructor_tasks | rgb_tasks).distinct()
 
 
 def get_instructor_task_history(course_id, usage_key=None, student=None, task_type=None):
@@ -521,3 +543,30 @@ def regenerate_certificates(request, course_key, statuses_to_regenerate):
     )
 
     return instructor_task
+
+
+def export_assignment_grades_csv(request, course_key, assignment_name):
+    """
+    Submits a task to generate a CSV grade report for an assignment.
+    """
+    task_type = 'export_assignment_grades_csv'
+    task_class = export_assignment_grades_csv_task
+    task_input = {
+        "assignment_name": assignment_name
+    }
+    task_key = ""
+    return submit_task(request, task_type, task_class, course_key, task_input, task_key)
+
+
+def export_grades_to_rgb(request, course_key, assignment_name, email):
+    """
+    Submits a task to export assignment grades to a remote gradebook.
+    """
+    task_type = TASK_TYPE_EXPORT_GRADES_TO_RGB
+    task_class = export_grades_to_rgb_task
+    task_input = {
+        "assignment_name": assignment_name,
+        "email_id": email
+    }
+    task_key = ""
+    return submit_task(request, task_type, task_class, course_key, task_input, task_key)

@@ -53,4 +53,27 @@ from openedx.core.djangolib.markup import HTML, Text
 
   <div id="errors" class="errors"></div>
   <div id="results"></div>
+  <br/>
+  <div class="reports-download-container action-type-container">
+    ## Translators: a table of URL links to report files appears after this sentence.
+    <p>
+        ${Text(_("{strong_start}Note{strong_end}: To keep student data secure, you cannot save or email these links for direct access. Copies of links expire within 5 minutes.")).format(
+            strong_start=HTML("<strong>"),
+            strong_end=HTML("</strong>"),
+        )}
+    </p><br>
+
+    <div class="report-downloads-table" id="report-downloads-table" data-endpoint="${ section_data['list_report_downloads_url'] }" ></div>
+  </div>
+%if settings.FEATURES.get('ENABLE_INSTRUCTOR_BACKGROUND_TASKS'):
+  <div class="running-tasks-container action-type-container">
+    <h3 class="hd hd-3">${_("Pending Tasks")}</h3>
+    <div class="running-tasks-section">
+      <p>${_("The status for any active tasks appears in a table below.")} </p>
+      <br />
+      <div class="running-tasks-table" data-endpoint="${ section_data['list_instructor_tasks_url'] }"></div>
+    </div>
+    <div class="no-pending-tasks-message"></div>
+  </div>
+%endif
 </section>

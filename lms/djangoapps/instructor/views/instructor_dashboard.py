@@ -642,6 +642,12 @@ def _section_remote_gradebook(course):
         'export_assignment_grades_csv_url': reverse(
             'export_assignment_grades_csv', kwargs={'course_id': unicode(course.id)}
         ),
+        'list_instructor_tasks_url': reverse(
+            'list_instructor_tasks', kwargs={'course_id': unicode(course.id)}
+        ),
+        'list_report_downloads_url': reverse(
+            'list_report_downloads', kwargs={'course_id': unicode(course.id)}
+        ),
     }
     return section_data
 
