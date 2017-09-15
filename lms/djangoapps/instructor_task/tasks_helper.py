@@ -3,8 +3,10 @@ This file contains tasks that are designed to perform background operations on t
 running state of a course.
 
 """
+import csv
 import json
 import logging
+import requests
 from StringIO import StringIO
 from collections import OrderedDict
 from datetime import datetime
@@ -42,6 +44,10 @@ from certificates.models import (
 from courseware.courses import get_course_by_id, get_problems_in_section
 from lms.djangoapps.grades.context import grading_context_for_course
 from lms.djangoapps.grades.new.course_grade import CourseGradeFactory
+from instructor.views.api import (
+    _do_remote_gradebook,
+    _get_assignment_grade_datatable,
+)
 from courseware.model_data import DjangoKeyValueStore, FieldDataCache
 from courseware.models import StudentModule
 from courseware.module_render import get_module_for_descriptor_internal
@@ -1734,3 +1740,106 @@ def upload_ora2_data(
     TASK_LOG.info(u'%s, Task type: %s, Upload complete.', task_info_string, action_name)
 
     return UPDATE_STATUS_SUCCEEDED
+
+
+def generate_assignment_grade_csv(_xmodule_instance_args, _entry_id, course_id, task_input, action_name):
+    start_time = time()
+    start_date = datetime.now(UTC)
+    num_reports = 1
+    task_progress = TaskProgress(action_name, num_reports, start_time)
+
+    if not task_input['assignment_name']:
+        return _progress_error("Error, assignment name missing", task_progress)
+
+    current_step = {'step': 'Get course from modulestore'}
+    task_progress.update_task_state(extra_meta=current_step)
+    course = get_course_by_id(course_id)
+
+    current_step = {'step': 'Load grades'}
+    task_progress.update_task_state(extra_meta=current_step)
+    __, data_table = _get_assignment_grade_datatable(course, task_input['assignment_name'])
+
+    rows = data_table["data"]
+    task_progress.attempted = task_progress.succeeded = len(rows)
+    task_progress.skipped = task_progress.total - task_progress.attempted
+    rows.insert(0, data_table["header"])
+    current_step = {'step': 'Uploading CSV'}
+    task_progress.update_task_state(extra_meta=current_step)
+
+    # Perform the upload
+    upload_csv_to_report_store(rows, 'grades', course_id, start_date)
+
+    current_step = {'step': 'Uploaded CSV'}
+    return task_progress.update_task_state(extra_meta=current_step)
+
+
+def post_grades_to_rgb(_xmodule_instance_args, _entry_id, course_id, task_input, action_name):
+    start_time = time()
+    num_reports = 1
+    task_progress = TaskProgress(action_name, num_reports, start_time)
+
+    if not task_input['assignment_name']:
+        return _progress_error("Error, assignment name missing", task_progress)
+
+    current_step = {'step': 'Get course from modulestore'}
+    task_progress.update_task_state(extra_meta=current_step)
+    course = get_course_by_id(course_id)
+
+    current_step = {'step': 'Load grades'}
+    task_progress.update_task_state(extra_meta=current_step)
+    __, data_table = _get_assignment_grade_datatable(course, task_input['assignment_name'])
+
+    task_progress.attempted = task_progress.succeeded = len(data_table["data"])
+    task_progress.skipped = task_progress.total - task_progress.attempted
+
+    current_step = {'step': 'Uploading CSV'}
+    task_progress.update_task_state(extra_meta=current_step)
+
+    # Perform the upload
+    file_pointer = StringIO()
+    create_datatable_csv(file_pointer, data_table)
+    file_pointer.seek(0)
+    files = {'datafile': file_pointer}
+
+    error_message, __ = _do_remote_gradebook(
+        task_input['email_id'],
+        course,
+        'post-grades',
+        files=files,
+    )
+
+    if error_message:
+        return _progress_error(error_message, task_progress)
+
+    current_step = {
+        'step': 'Posted to RGB',
+        'succeeded': 1
+    }
+    task_progress.succeeded = 1
+    return task_progress.update_task_state(extra_meta=current_step)
+
+
+def create_datatable_csv(csv_file, datatable):
+    """Creates a CSV file from the contents of a datatable."""
+    writer = csv.writer(csv_file, dialect='excel', quotechar='"', quoting=csv.QUOTE_ALL)
+    encoded_row = [unicode(s).encode('utf-8') for s in datatable['header']]
+    writer.writerow(encoded_row)
+    for datarow in datatable['data']:
+        # 's' here may be an integer, float (eg score) or string (eg student name)
+        encoded_row = [
+            # If s is already a UTF-8 string, trying to make a unicode
+            # object out of it will fail unless we pass in an encoding to
+            # the constructor. But we can't do that across the board,
+            # because s is often a numeric type. So just do this.
+            s if isinstance(s, str) else unicode(s).encode('utf-8')
+            for s in datarow
+        ]
+        writer.writerow(encoded_row)
+    return csv_file
+
+
+def _progress_error(error_msg, task_progress):
+    task_progress.failed = 1
+    curr_step = {'step': error_msg}
+    task_progress.update_task_state(extra_meta=curr_step)
+    return UPDATE_STATUS_FAILED
