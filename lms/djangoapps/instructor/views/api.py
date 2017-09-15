@@ -532,7 +532,9 @@ def create_and_enroll_user(email, username, name, country, password, course_id, 
     except Exception as ex:  # pylint: disable=broad-except
         log.exception(type(ex).__name__)
         errors.append({
-            'username': username, 'email': email, 'response': type(ex).__name__,
+            'username': username,
+            'email': email,
+            'response': type(ex).__name__
         })
     else:
         try:
@@ -2252,6 +2254,7 @@ def list_instructor_tasks(request, course_id):
         - `problem_location_str` and `unique_student_identifier` lists task
             history for problem AND student (intersection)
     """
+    include_remote_gradebook = request.REQUEST.get('include_remote_gradebook') is not None
     course_id = SlashSeparatedCourseKey.from_deprecated_string(course_id)
     problem_location_str = strip_if_string(request.POST.get('problem_location_str', False))
     student = request.POST.get('unique_student_identifier', None)
@@ -2274,6 +2277,11 @@ def list_instructor_tasks(request, course_id):
         else:
             # Specifying for single problem's history
             tasks = lms.djangoapps.instructor_task.api.get_instructor_task_history(course_id, module_state_key)
+    elif include_remote_gradebook:
+        tasks = lms.djangoapps.instructor_task.api.get_running_instructor_rgb_tasks(
+            course_id,
+            user=request.user
+        )
     else:
         # If no problem or student, just get currently running tasks
         tasks = lms.djangoapps.instructor_task.api.get_running_instructor_tasks(course_id)
@@ -2469,7 +2477,7 @@ def _get_assignment_grade_datatable(course, assignment_name):
     return None, datatable
 
 
-def _do_remote_gradebook(user, course, action, files=None, **kwargs):
+def _do_remote_gradebook(email, course, action, files=None, **kwargs):
     """
     Perform remote gradebook action. Returns error message, response dict.
     """
@@ -2480,8 +2488,10 @@ def _do_remote_gradebook(user, course, action, files=None, **kwargs):
         error_msg = _("Missing required remote gradebook env setting: ") + "REMOTE_GRADEBOOK['URL']"
         return error_msg, {}
     elif not rg_user or not rg_password:
-        error_msg = _("Missing required remote gradebook auth settings: ") + \
-                    "REMOTE_GRADEBOOK_USER, REMOTE_GRADEBOOK_PASSWORD"
+        error_msg = _(
+            "Missing required remote gradebook auth settings: " +
+            "REMOTE_GRADEBOOK_USER, REMOTE_GRADEBOOK_PASSWORD"
+        )
         return error_msg, {}
 
     rg_course_settings = course.remote_gradebook or {}
@@ -2490,7 +2500,7 @@ def _do_remote_gradebook(user, course, action, files=None, **kwargs):
         error_msg = _("No gradebook name defined in course remote_gradebook metadata and no default name set")
         return error_msg, {}
 
-    data = dict(submit=action, gradebook=rg_name, user=user.email, **kwargs)
+    data = dict(submit=action, gradebook=rg_name, user=email, **kwargs)
     resp = requests.post(
         rg_url,
         auth=(rg_user, rg_password),
@@ -2508,7 +2518,7 @@ def _do_remote_gradebook_datatable(user, course, action, files=None, **kwargs):
     """
     Perform remote gradebook action that returns a datatable. Returns error message, datatable dict.
     """
-    error_message, response_json = _do_remote_gradebook(user, course, action, files=files, **kwargs)
+    error_message, response_json = _do_remote_gradebook(user.email, course, action, files=files, **kwargs)
     if error_message:
         return error_message, {}
     response_data = response_json.get('data')  # a list of dicts
@@ -2749,25 +2759,6 @@ def list_remote_assignments(request, course_id):
     })
 
 
-def create_datatable_csv(csv_file, datatable):
-    """Creates a CSV file from the contents of a datatable."""
-    writer = csv.writer(csv_file, dialect='excel', quotechar='"', quoting=csv.QUOTE_ALL)
-    encoded_row = [unicode(s).encode('utf-8') for s in datatable['header']]
-    writer.writerow(encoded_row)
-    for datarow in datatable['data']:
-        # 's' here may be an integer, float (eg score) or string (eg student name)
-        encoded_row = [
-            # If s is already a UTF-8 string, trying to make a unicode
-            # object out of it will fail unless we pass in an encoding to
-            # the constructor. But we can't do that across the board,
-            # because s is often a numeric type. So just do this.
-            s if isinstance(s, str) else unicode(s).encode('utf-8')
-            for s in datarow
-        ]
-        writer.writerow(encoded_row)
-    return csv_file
-
-
 @require_POST
 @ensure_csrf_cookie
 @cache_control(no_cache=True, no_store=True, must_revalidate=True)
@@ -2785,7 +2776,7 @@ def display_assignment_grades(request, course_id):
     })
 
 
-@require_POST
+@transaction.non_atomic_requests
 @ensure_csrf_cookie
 @cache_control(no_cache=True, no_store=True, must_revalidate=True)
 @require_level('staff')
@@ -2794,26 +2785,25 @@ def export_assignment_grades_to_rg(request, course_id):
     Exports students' grades for an assignment to the remote gradebook, then returns a
     datatable of those grades
     """
+    assignment_name = request.GET.get('assignment_name', '')
     course_id = CourseLocator.from_string(course_id)
-    course = get_course_by_id(course_id)
-    assignment_name = request.POST.get('assignment_name', '')
-    error_msg, datatable = _get_assignment_grade_datatable(course, assignment_name)
-
-    response_message = ''
-    if not error_msg:
-        file_pointer = StringIO.StringIO()
-        create_datatable_csv(file_pointer, datatable)
-        file_pointer.seek(0)
-        files = {'datafile': file_pointer}
-        error_msg, response_json = _do_remote_gradebook(request.user, course, 'post-grades', files=files)
-        response_message = response_json.get('msg', '')
-
-    return JsonResponse({
-        'errors': error_msg,
-        'message': response_message
-    })
+    try:
+        lms.djangoapps.instructor_task.api.export_grades_to_rgb(
+            request,
+            course_id,
+            assignment_name,
+            request.user.email
+        )
+        success_status = _("Posting grades to remote grade book")
+        return JsonResponse({"status": success_status})
+    except AlreadyRunningError:
+        already_running_status = _("Posting grades to remote grade book."
+                                   " To view the status of the report, see Pending Tasks below."
+                                   " You will be able to download the report when it is complete.")
+        return JsonResponse({"status": already_running_status})
 
 
+@transaction.non_atomic_requests
 @ensure_csrf_cookie
 @cache_control(no_cache=True, no_store=True, must_revalidate=True)
 @require_level('staff')
@@ -2821,21 +2811,18 @@ def export_assignment_grades_csv(request, course_id):
     """
     Creates a CSV of students' grades for an assignment and returns that CSV as an HTTP response
     """
-    course_id = CourseLocator.from_string(course_id)
-    course = get_course_by_id(course_id)
+    course_key = CourseLocator.from_string(course_id)
     assignment_name = request.GET.get('assignment_name', '')
-    error_msg, datatable = _get_assignment_grade_datatable(course, assignment_name)
-    if error_msg:
-        return HttpResponseNotFound(error_msg)
-    else:
-        filename = 'grades {course_id} {name}.csv'.format(
-            course_id=course_id.to_deprecated_string(),
-            name=assignment_name
-        )
-        response = HttpResponse(content_type='text/csv')
-        response['Content-Disposition'] = (u'attachment; filename={0}'.format(filename)).encode('utf-8')
-        create_datatable_csv(response, datatable)
-        return response
+    try:
+        lms.djangoapps.instructor_task.api.export_assignment_grades_csv(request, course_key, assignment_name)
+        success_status = _("The grade report is being created."
+                           " To view the status of the report, see Pending Tasks below.")
+        return JsonResponse({"status": success_status})
+    except AlreadyRunningError:
+        already_running_status = _("The grade report is currently being created."
+                                   " To view the status of the report, see Pending Tasks below."
+                                   " You will be able to download the report when it is complete.")
+        return JsonResponse({"status": already_running_status})
 
 
 @require_POST
