@@ -6,6 +6,8 @@ already been submitted, filtered either by running state or input
 arguments.
 
 """
+
+import datetime
 import hashlib
 from collections import Counter
 
@@ -37,10 +39,15 @@ from lms.djangoapps.instructor_task.tasks import (
     proctored_exam_results_csv,
     rescore_problem,
     reset_problem_attempts,
-    send_bulk_course_email
+    send_bulk_course_email,
+    export_assignment_grades_csv_task,
+    export_grades_to_rgb_task,
 )
 from util import milestones_helpers
 from xmodule.modulestore.django import modulestore
+
+
+TASK_TYPE_EXPORT_GRADES_TO_RGB = "export_grades_to_rgb"
 
 
 class SpecificStudentIdMissingError(Exception):
@@ -48,6 +55,27 @@ class SpecificStudentIdMissingError(Exception):
     Exception indicating that a student id was not provided when generating a certificate for a specific student.
     """
     pass
+
+
+def get_running_instructor_rgb_tasks(course_id, user):
+    """
+    Returns a query of InstructorTask objects of running tasks for remote grade book.
+
+    Used to generate a list of tasks to display on the instructor dashboard.
+    """
+    # list down remote grade book tasks
+    instructor_tasks = get_running_instructor_tasks(course_id)
+    now = datetime.datetime.now()
+    rgb_tasks = InstructorTask.objects.filter(
+        course_id=course_id,
+        task_state__icontains="success",
+        task_type=TASK_TYPE_EXPORT_GRADES_TO_RGB,
+        updated__lte=now,
+        updated__gte=now - datetime.timedelta(days=5),
+        requester=user
+    ).order_by('-updated')[0:3]
+
+    return (instructor_tasks | rgb_tasks).distinct()
 
 
 def get_running_instructor_tasks(course_id):
