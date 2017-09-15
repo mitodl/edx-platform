@@ -59,15 +59,16 @@ class SpecificStudentIdMissingError(Exception):
     pass
 
 
-def get_running_instructor_rgb_tasks(course_id, user=None):
+def get_running_instructor_rgb_tasks(course_id, user):
     """
     Returns a query of InstructorTask objects of running tasks for remote grade book.
 
     Used to generate a list of tasks to display on the instructor dashboard.
     """
     # list down remote grade book tasks
+    instructor_tasks = get_running_instructor_tasks(course_id)
     now = datetime.datetime.now()
-    return InstructorTask.objects.filter(
+    rgb_tasks = InstructorTask.objects.filter(
         course_id=course_id,
         task_state__icontains="success",
         task_type=TASK_TYPE_EXPORT_GRADES_TO_RGB,
@@ -75,6 +76,8 @@ def get_running_instructor_rgb_tasks(course_id, user=None):
         updated__gte=now - datetime.timedelta(days=5),
         requester=user
     ).order_by('-updated')[0:3]
+
+    return (instructor_tasks | rgb_tasks).distinct()
 
 
 def get_running_instructor_tasks(course_id):
