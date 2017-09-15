@@ -59,7 +59,25 @@ class SpecificStudentIdMissingError(Exception):
     pass
 
 
-def get_running_instructor_tasks(course_id, user=None):
+def get_running_instructor_rgb_tasks(course_id, user=None):
+    """
+    Returns a query of InstructorTask objects of running tasks for remote grade book.
+
+    Used to generate a list of tasks to display on the instructor dashboard.
+    """
+    # list down remote grade book tasks
+    now = datetime.datetime.now()
+    return InstructorTask.objects.filter(
+        course_id=course_id,
+        task_state__icontains="success",
+        task_type=TASK_TYPE_EXPORT_GRADES_TO_RGB,
+        updated__lte=now,
+        updated__gte=now - datetime.timedelta(days=5),
+        requester=user
+    ).order_by('-updated')[0:3]
+
+
+def get_running_instructor_tasks(course_id):
     """
     Returns a query of InstructorTask objects of running tasks for a given course.
 
@@ -69,23 +87,7 @@ def get_running_instructor_tasks(course_id, user=None):
     # exclude states that are "ready" (i.e. not "running", e.g. failure, success, revoked):
     for state in READY_STATES:
         instructor_tasks = instructor_tasks.exclude(task_state=state)
-
-    instructor_tasks = instructor_tasks.order_by('-id')
-
-    # list down remote grade book tasks
-    now = datetime.datetime.now()
-    rgb_tasks = InstructorTask.objects.filter(
-        course_id=course_id,
-        task_state__icontains="success",
-        task_type=TASK_TYPE_EXPORT_GRADES_TO_RGB,
-        updated__lte=now,
-        updated__gte=now - datetime.timedelta(days=5)
-    ).order_by('-id')
-
-    if user is not None:
-        rgb_tasks = rgb_tasks.filter(requester=user)
-
-    return (instructor_tasks | rgb_tasks).distinct()
+    return instructor_tasks.order_by('-id')
 
 
 def get_instructor_task_history(course_id, usage_key=None, student=None, task_type=None):

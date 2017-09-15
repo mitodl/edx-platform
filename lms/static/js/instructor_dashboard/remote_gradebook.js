@@ -228,15 +228,11 @@
                             remoteGradebookObj.showErrors(
                                 gettext('Error posting grades to remote grade book. Please try again.')
                             );
-                            return $('.msg-error').css({
-                                display: 'block'
-                            });
+                            remoteGradebookObj.setTaskErrorVisibility(true);
                         },
                         success: function(data) {
                             remoteGradebookObj.showResults(data.status);
-                            return $('.msg-confirm').css({
-                                display: 'block'
-                            });
+                            remoteGradebookObj.setTaskMessageVisibility(true);
                         }
                    });
                 } else {
@@ -252,23 +248,19 @@
                         + assignmentName;
                    remoteGradebookObj.clear_display();
                    return $.ajax({
-                        type: 'GET',
-                        dataType: 'json',
-                        url: url,
-                        error: function() {
-                            remoteGradebookObj.showErrors(
+                       type: 'GET',
+                       dataType: 'json',
+                       url: url,
+                       error: function() {
+                           remoteGradebookObj.showErrors(
                                 gettext('Error generating grades. Please try again.')
-                            );
-                            return $('.msg-error').css({
-                                display: 'block'
-                            });
-                        },
-                        success: function(data) {
-                            remoteGradebookObj.showResults(data.status);
-                            return $('.msg-confirm').css({
-                                display: 'block'
-                            });
-                        }
+                           );
+                           remoteGradebookObj.setTaskErrorVisibility(true);
+                       },
+                       success: function(data) {
+                           remoteGradebookObj.showResults(data.status);
+                           remoteGradebookObj.setTaskMessageVisibility(true);
+                       }
                    });
                 } else {
                     remoteGradebookObj.showErrors(gettext('Assignment name must be specified.'));
@@ -293,12 +285,16 @@
         InstructorDashboardRemoteGradebook.prototype.clear_display = function() {
             this.$errors.empty();
             this.$results.empty();
-            $('.msg-confirm').css({
-                display: 'none'
-            });
-            return $('.msg-error').css({
-                display: 'none'
-            });
+            this.setTaskMessageVisibility(false);
+            this.setTaskErrorVisibility(false);
+        };
+
+        InstructorDashboardRemoteGradebook.prototype.setTaskMessageVisibility = function(visible) {
+            $('.msg-confirm').css({display: visible ? 'block' : 'none'});
+        };
+
+        InstructorDashboardRemoteGradebook.prototype.setTaskErrorVisibility = function(visible) {
+            $('.msg-error').css({display: visible ? 'block' : 'none'});
         };
 
 

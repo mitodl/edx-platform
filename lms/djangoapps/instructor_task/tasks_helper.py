@@ -1801,7 +1801,7 @@ def post_grades_to_rgb(_xmodule_instance_args, _entry_id, course_id, task_input,
     file_pointer.seek(0)
     files = {'datafile': file_pointer}
 
-    error_message, response_json = _do_remote_gradebook(
+    error_message, __ = _do_remote_gradebook(
         task_input['email_id'],
         course,
         'post-grades',
@@ -1843,4 +1843,3 @@ def _progress_error(error_msg, task_progress):
     curr_step = {'step': error_msg}
     task_progress.update_task_state(extra_meta=curr_step)
     return UPDATE_STATUS_FAILED
-

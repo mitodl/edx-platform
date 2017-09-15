@@ -2254,6 +2254,7 @@ def list_instructor_tasks(request, course_id):
         - `problem_location_str` and `unique_student_identifier` lists task
             history for problem AND student (intersection)
     """
+    include_remote_gradebook = request.REQUEST.get('include_remote_gradebook') is not None
     course_id = SlashSeparatedCourseKey.from_deprecated_string(course_id)
     problem_location_str = strip_if_string(request.POST.get('problem_location_str', False))
     student = request.POST.get('unique_student_identifier', None)
@@ -2276,12 +2277,14 @@ def list_instructor_tasks(request, course_id):
         else:
             # Specifying for single problem's history
             tasks = lms.djangoapps.instructor_task.api.get_instructor_task_history(course_id, module_state_key)
-    else:
-        # If no problem or student, just get currently running tasks
-        tasks = lms.djangoapps.instructor_task.api.get_running_instructor_tasks(
+    elif include_remote_gradebook:
+        tasks = lms.djangoapps.instructor_task.api.get_running_instructor_rgb_tasks(
             course_id,
             user=request.user
         )
+    else:
+        # If no problem or student, just get currently running tasks
+        tasks = lms.djangoapps.instructor_task.api.get_running_instructor_tasks(course_id)
 
     response_payload = {
         'tasks': map(extract_task_features, tasks),
