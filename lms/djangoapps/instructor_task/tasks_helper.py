@@ -44,10 +44,7 @@ from certificates.models import (
 from courseware.courses import get_course_by_id, get_problems_in_section
 from lms.djangoapps.grades.context import grading_context_for_course
 from lms.djangoapps.grades.new.course_grade import CourseGradeFactory
-from instructor.views.api import (
-    _do_remote_gradebook,
-    _get_assignment_grade_datatable,
-)
+
 from courseware.model_data import DjangoKeyValueStore, FieldDataCache
 from courseware.models import StudentModule
 from courseware.module_render import get_module_for_descriptor_internal
@@ -1743,6 +1740,7 @@ def upload_ora2_data(
 
 
 def generate_assignment_grade_csv(_xmodule_instance_args, _entry_id, course_id, task_input, action_name):
+    from instructor.views.api import _get_assignment_grade_datatable
     start_time = time()
     start_date = datetime.now(UTC)
     num_reports = 1
@@ -1774,6 +1772,10 @@ def generate_assignment_grade_csv(_xmodule_instance_args, _entry_id, course_id, 
 
 
 def post_grades_to_rgb(_xmodule_instance_args, _entry_id, course_id, task_input, action_name):
+    from instructor.views.api import (
+        _do_remote_gradebook,
+        _get_assignment_grade_datatable,
+    )
     start_time = time()
     num_reports = 1
     task_progress = TaskProgress(action_name, num_reports, start_time)
