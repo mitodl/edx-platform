@@ -2786,13 +2786,18 @@ def export_assignment_grades_to_rg(request, course_id):
     datatable of those grades
     """
     assignment_name = request.GET.get('assignment_name', '')
-    course_id = CourseLocator.from_string(course_id)
+    course_id = SlashSeparatedCourseKey.from_deprecated_string(course_id)
     try:
         lms.djangoapps.instructor_task.api.export_grades_to_rgb(
             request,
             course_id,
             assignment_name,
             request.user.email
+        )
+        log.info(
+            u'Posting grades to RGB for user %s and course %s',
+            request.user.username,
+            course_id
         )
         success_status = _("Posting grades to remote grade book")
         return JsonResponse({"status": success_status})
@@ -2811,10 +2816,16 @@ def export_assignment_grades_csv(request, course_id):
     """
     Creates a CSV of students' grades for an assignment and returns that CSV as an HTTP response
     """
-    course_key = CourseLocator.from_string(course_id)
+    # course_key = CourseLocator.from_string(course_id)
+    course_key = SlashSeparatedCourseKey.from_deprecated_string(course_id)
     assignment_name = request.GET.get('assignment_name', '')
     try:
         lms.djangoapps.instructor_task.api.export_assignment_grades_csv(request, course_key, assignment_name)
+        log.info(
+            u'Exporting grades to CSV for user %s and course %s',
+            request.user.username,
+            course_id
+        )
         success_status = _("The grade report is being created."
                            " To view the status of the report, see Pending Tasks below.")
         return JsonResponse({"status": success_status})

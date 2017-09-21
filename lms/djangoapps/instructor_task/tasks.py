@@ -311,6 +311,7 @@ def export_assignment_grades_csv_task(entry_id, xmodule_instance_args):
     Generate a CSV of remote grade book grades.
     """
     action_name = ugettext_noop('export_assignment_grades_csv_task')
+    TASK_LOG.info("Uploading grades for download")
     task_fn = partial(generate_assignment_grade_csv, xmodule_instance_args)
     return run_main_task(entry_id, task_fn, action_name)
 
@@ -321,5 +322,6 @@ def export_grades_to_rgb_task(entry_id, xmodule_instance_args):
     Upload grades to remote grade book (RGB).
     """
     action_name = ugettext_noop('export_grades_to_rgb')
+    TASK_LOG.info("Uploading grades to RGB")
     task_fn = partial(post_grades_to_rgb, xmodule_instance_args)
     return run_main_task(entry_id, task_fn, action_name)
