@@ -305,7 +305,7 @@ def export_ora2_data(entry_id, xmodule_instance_args):
     return run_main_task(entry_id, task_fn, action_name)
 
 
-@task(base=BaseInstructorTask, routing_key=settings.GRADES_DOWNLOAD_ROUTING_KEY)  # pylint: disable=not-callable
+@task(base=BaseInstructorTask, routing_key=settings.HIGH_PRIORITY_QUEUE)  # pylint: disable=not-callable
 def export_assignment_grades_csv_task(entry_id, xmodule_instance_args):
     """
     Generate a CSV of remote grade book grades.
@@ -316,7 +316,7 @@ def export_assignment_grades_csv_task(entry_id, xmodule_instance_args):
     return run_main_task(entry_id, task_fn, action_name)
 
 
-@task(base=BaseInstructorTask, routing_key=settings.GRADES_DOWNLOAD_ROUTING_KEY)  # pylint: disable=not-callable
+@task(base=BaseInstructorTask, routing_key=settings.HIGH_PRIORITY_QUEUE)  # pylint: disable=not-callable
 def export_grades_to_rgb_task(entry_id, xmodule_instance_args):
     """
     Upload grades to remote grade book (RGB).
