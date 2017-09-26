@@ -1799,7 +1799,6 @@ def generate_assignment_grade_csv(_xmodule_instance_args, _entry_id, course_id, 
             task_input['assignment_name']
         )
 
-        task_progress.skipped = task_progress.total - task_progress.attempted
         rows = data_table["data"]
         rows.insert(0, data_table["header"])
         current_step = {'step': 'Uploading CSV'}
@@ -1889,8 +1888,6 @@ def post_grades_to_rgb(_xmodule_instance_args, _entry_id, course_id, task_input,
             course_key,
             task_input['assignment_name']
         )
-
-        task_progress.skipped = task_progress.total - task_progress.attempted
 
         current_step = {'step': 'Uploading CSV'}
         task_progress.update_task_state(extra_meta=current_step)

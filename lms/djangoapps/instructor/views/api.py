@@ -2495,6 +2495,7 @@ def _get_assignment_grade_datatable(course, assignment_name, task_progress=None)
 
     if task_progress is not None:
         task_progress.succeeded = student_counter
+        task_progress.skipped = task_progress.total - task_progress.attempted
         current_step = {'step': 'Calculated Grades for {} students'.format(student_counter)}
         task_progress.update_task_state(extra_meta=current_step)
 
