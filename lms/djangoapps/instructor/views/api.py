@@ -2451,7 +2451,7 @@ def problem_grade_report(request, course_id):
         })
 
 
-def _get_assignment_grade_datatable(course, assignment_name):
+def _get_assignment_grade_datatable(course, assignment_name, task_progress=None):
     """
     Returns a datatable of students' grades for an assignment in the given course
     """
@@ -2459,8 +2459,26 @@ def _get_assignment_grade_datatable(course, assignment_name):
         return _("No assignment name given"), {}
 
     row_data = []
+    current_step = {'step': 'Calculating Grades'}
+    student_counter = 0
     enrolled_students = CourseEnrollment.objects.users_enrolled_in(course.id)
+    total_enrolled_students = enrolled_students.count()
+
     for student, course_grade, err_msg in CourseGradeFactory().iter(course, enrolled_students):
+        # Periodically update task status (this is a cache write)
+        student_counter += 1
+        if task_progress is not None:
+            task_progress.update_task_state(extra_meta=current_step)
+            task_progress.attempted += 1
+
+        log.info(
+            u'%s, Current step: %s, Grade calculation in-progress for students: %s/%s',
+            assignment_name,
+            current_step,
+            student_counter,
+            total_enrolled_students
+        )
+
         if course_grade and not err_msg:
             matching_assignment_grade = next(
                 ifilter(
@@ -2469,6 +2487,18 @@ def _get_assignment_grade_datatable(course, assignment_name):
                 ), {}
             )
             row_data.append([student.email, matching_assignment_grade.get('percent', 0)])
+            if task_progress is not None:
+                task_progress.succeeded += 1
+        else:
+            if task_progress is not None:
+                task_progress.failed += 1
+
+    if task_progress is not None:
+        task_progress.succeeded = student_counter
+        task_progress.skipped = task_progress.total - task_progress.attempted
+        current_step = {'step': 'Calculated Grades for {} students'.format(student_counter)}
+        task_progress.update_task_state(extra_meta=current_step)
+
     datatable = dict(
         header=[_('External email'), assignment_name],
         data=row_data,
@@ -2786,13 +2816,18 @@ def export_assignment_grades_to_rg(request, course_id):
     datatable of those grades
     """
     assignment_name = request.GET.get('assignment_name', '')
-    course_id = CourseLocator.from_string(course_id)
+    course_id = SlashSeparatedCourseKey.from_deprecated_string(course_id)
     try:
         lms.djangoapps.instructor_task.api.export_grades_to_rgb(
             request,
             course_id,
             assignment_name,
             request.user.email
+        )
+        log.info(
+            u'Posting grades to RGB for user %s and course %s',
+            request.user.username,
+            course_id
         )
         success_status = _("Posting grades to remote grade book")
         return JsonResponse({"status": success_status})
@@ -2811,10 +2846,15 @@ def export_assignment_grades_csv(request, course_id):
     """
     Creates a CSV of students' grades for an assignment and returns that CSV as an HTTP response
     """
-    course_key = CourseLocator.from_string(course_id)
+    course_key = SlashSeparatedCourseKey.from_deprecated_string(course_id)
     assignment_name = request.GET.get('assignment_name', '')
     try:
         lms.djangoapps.instructor_task.api.export_assignment_grades_csv(request, course_key, assignment_name)
+        log.info(
+            u'Exporting grades to CSV for user %s and course %s',
+            request.user.username,
+            course_id
+        )
         success_status = _("The grade report is being created."
                            " To view the status of the report, see Pending Tasks below.")
         return JsonResponse({"status": success_status})

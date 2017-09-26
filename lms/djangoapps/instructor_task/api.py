@@ -6,6 +6,7 @@ already been submitted, filtered either by running state or input
 arguments.
 
 """
+import logging
 import datetime
 from collections import Counter
 import hashlib
@@ -50,6 +51,7 @@ from util import milestones_helpers
 
 
 TASK_TYPE_EXPORT_GRADES_TO_RGB = "export_grades_to_rgb"
+TASK_LOG = logging.getLogger('edx.celery.task')
 
 
 class SpecificStudentIdMissingError(Exception):
@@ -73,7 +75,7 @@ def get_running_instructor_rgb_tasks(course_id, user):
         task_state__icontains="success",
         task_type=TASK_TYPE_EXPORT_GRADES_TO_RGB,
         updated__lte=now,
-        updated__gte=now - datetime.timedelta(days=5),
+        updated__gte=now - datetime.timedelta(days=2),
         requester=user
     ).order_by('-updated')[0:3]
 
@@ -560,6 +562,7 @@ def export_assignment_grades_csv(request, course_key, assignment_name):
         "assignment_name": assignment_name
     }
     task_key = ""
+    TASK_LOG.debug("Submitting download grades task")
     return submit_task(request, task_type, task_class, course_key, task_input, task_key)
 
 
@@ -574,4 +577,5 @@ def export_grades_to_rgb(request, course_key, assignment_name, email):
         "email_id": email
     }
     task_key = ""
+    TASK_LOG.debug("Submitting grades to RGB task")
     return submit_task(request, task_type, task_class, course_key, task_input, task_key)

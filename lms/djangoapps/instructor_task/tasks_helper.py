@@ -6,7 +6,6 @@ running state of a course.
 import csv
 import json
 import logging
-import requests
 from StringIO import StringIO
 from collections import OrderedDict
 from datetime import datetime
@@ -23,6 +22,7 @@ from django.contrib.auth.models import User
 from django.core.files.storage import DefaultStorage
 from django.db import reset_queries
 from django.db.models import Q
+from django.http import Http404
 from django.utils.translation import ugettext as _
 from eventtracking import tracker
 from lms.djangoapps.grades.scores import weighted_score
@@ -44,10 +44,7 @@ from certificates.models import (
 from courseware.courses import get_course_by_id, get_problems_in_section
 from lms.djangoapps.grades.context import grading_context_for_course
 from lms.djangoapps.grades.new.course_grade import CourseGradeFactory
-from instructor.views.api import (
-    _do_remote_gradebook,
-    _get_assignment_grade_datatable,
-)
+
 from courseware.model_data import DjangoKeyValueStore, FieldDataCache
 from courseware.models import StudentModule
 from courseware.module_render import get_module_for_descriptor_internal
@@ -1743,80 +1740,221 @@ def upload_ora2_data(
 
 
 def generate_assignment_grade_csv(_xmodule_instance_args, _entry_id, course_id, task_input, action_name):
+    from lms.djangoapps.instructor.views.api import _get_assignment_grade_datatable
     start_time = time()
     start_date = datetime.now(UTC)
-    num_reports = 1
-    task_progress = TaskProgress(action_name, num_reports, start_time)
+    enrolled_students = CourseEnrollment.objects.users_enrolled_in(course_id)
+    total_enrolled_students = enrolled_students.count()
+
+    task_progress = TaskProgress(action_name, total_enrolled_students, start_time)
+    course_key = unicode(course_id)
 
     if not task_input['assignment_name']:
+        TASK_LOG.error(
+            "generate_csv: Assignment name missing for course with id %s",
+            course_key
+        )
         return _progress_error("Error, assignment name missing", task_progress)
 
     current_step = {'step': 'Get course from modulestore'}
     task_progress.update_task_state(extra_meta=current_step)
-    course = get_course_by_id(course_id)
 
-    current_step = {'step': 'Load grades'}
-    task_progress.update_task_state(extra_meta=current_step)
-    __, data_table = _get_assignment_grade_datatable(course, task_input['assignment_name'])
-
-    rows = data_table["data"]
-    task_progress.attempted = task_progress.succeeded = len(rows)
-    task_progress.skipped = task_progress.total - task_progress.attempted
-    rows.insert(0, data_table["header"])
-    current_step = {'step': 'Uploading CSV'}
-    task_progress.update_task_state(extra_meta=current_step)
-
-    # Perform the upload
-    upload_csv_to_report_store(rows, 'grades', course_id, start_date)
-
-    current_step = {'step': 'Uploaded CSV'}
-    return task_progress.update_task_state(extra_meta=current_step)
-
-
-def post_grades_to_rgb(_xmodule_instance_args, _entry_id, course_id, task_input, action_name):
-    start_time = time()
-    num_reports = 1
-    task_progress = TaskProgress(action_name, num_reports, start_time)
-
-    if not task_input['assignment_name']:
-        return _progress_error("Error, assignment name missing", task_progress)
-
-    current_step = {'step': 'Get course from modulestore'}
-    task_progress.update_task_state(extra_meta=current_step)
-    course = get_course_by_id(course_id)
-
-    current_step = {'step': 'Load grades'}
-    task_progress.update_task_state(extra_meta=current_step)
-    __, data_table = _get_assignment_grade_datatable(course, task_input['assignment_name'])
-
-    task_progress.attempted = task_progress.succeeded = len(data_table["data"])
-    task_progress.skipped = task_progress.total - task_progress.attempted
-
-    current_step = {'step': 'Uploading CSV'}
-    task_progress.update_task_state(extra_meta=current_step)
-
-    # Perform the upload
-    file_pointer = StringIO()
-    create_datatable_csv(file_pointer, data_table)
-    file_pointer.seek(0)
-    files = {'datafile': file_pointer}
-
-    error_message, __ = _do_remote_gradebook(
-        task_input['email_id'],
-        course,
-        'post-grades',
-        files=files,
+    TASK_LOG.info(
+        "generate_csv: Loading course with id %s, assignment_name %s",
+        course_key,
+        task_input['assignment_name']
+    )
+    course, error_state = get_course(
+        course_id,
+        task_progress,
+        "generate_csv: Unable to load course with id {}".format(course_key)
     )
 
-    if error_message:
-        return _progress_error(error_message, task_progress)
+    if error_state:
+        return error_state
 
-    current_step = {
-        'step': 'Posted to RGB',
-        'succeeded': 1
-    }
-    task_progress.succeeded = 1
-    return task_progress.update_task_state(extra_meta=current_step)
+    if course is not None:
+        TASK_LOG.info(
+            "generate_csv: Loaded course with id %s, assignment_name %s",
+            course_key,
+            task_input['assignment_name']
+        )
+
+        current_step = {'step': 'Load grades'}
+        task_progress.update_task_state(extra_meta=current_step)
+
+        TASK_LOG.info(
+            "generate_csv: Loading grade data table for course %s, assignment_name %s",
+            course_key,
+            task_input['assignment_name']
+        )
+        __, data_table = _get_assignment_grade_datatable(
+            course,
+            task_input['assignment_name'],
+            task_progress
+        )
+        TASK_LOG.info(
+            "generate_csv: Grade data table loaded for course %s, assignment_name %s",
+            course_key,
+            task_input['assignment_name']
+        )
+
+        rows = data_table["data"]
+        rows.insert(0, data_table["header"])
+        current_step = {'step': 'Uploading CSV'}
+        task_progress.update_task_state(extra_meta=current_step)
+
+        TASK_LOG.info(
+            "generate_csv: Starting upload gradebook for course %s, assignment_name %s",
+            course_key,
+            task_input['assignment_name']
+        )
+        # Perform the upload
+        upload_csv_to_report_store(
+            rows,
+            'grades_{}'.format(task_input['assignment_name']),
+            course_id,
+            start_date
+        )
+
+        TASK_LOG.info(
+            "generate_csv: Done uploading gradebook for course %s, assignment_name %s",
+            course_key,
+            task_input['assignment_name']
+        )
+
+        current_step = {'step': 'Uploaded CSV'}
+        return task_progress.update_task_state(extra_meta=current_step)
+    else:
+        TASK_LOG.error("generate_csv: Error in loading course %s", course_key)
+
+    return _progress_error("Error in loading course {}".format(course_key), task_progress)
+
+def post_grades_to_rgb(_xmodule_instance_args, _entry_id, course_id, task_input, action_name):
+    from lms.djangoapps.instructor.views.api import (
+        _do_remote_gradebook,
+        _get_assignment_grade_datatable,
+    )
+    start_time = time()
+    enrolled_students = CourseEnrollment.objects.users_enrolled_in(course_id)
+    total_enrolled_students = enrolled_students.count()
+    task_progress = TaskProgress(action_name, total_enrolled_students, start_time)
+    course_key = unicode(course_id)
+
+    if not task_input['assignment_name']:
+        TASK_LOG.error(
+            "RGB post: Assignment name missing for course with id %s",
+            course_key
+        )
+        return _progress_error("Error, assignment name missing", task_progress)
+
+    current_step = {'step': 'Get course from modulestore'}
+    task_progress.update_task_state(extra_meta=current_step)
+
+    TASK_LOG.info(
+        "RGB post: Loading course with id %s, assignment_name %s",
+        course_key,
+        task_input['assignment_name']
+    )
+    course, error_state = get_course(
+        course_id,
+        task_progress,
+        "Unable to load course with id {} for RGB POST".format(course_key)
+    )
+
+    if error_state:
+        return error_state
+
+    if course is not None:
+        TASK_LOG.info(
+            "RGB post: Loaded course with id %s, assignment_name %s",
+            course_key,
+            task_input['assignment_name']
+        )
+        current_step = {'step': 'Load grades'}
+        task_progress.update_task_state(extra_meta=current_step)
+        TASK_LOG.info(
+            "RGB post: Loading grade data table for course %s, assignment_name %s",
+            course_key,
+            task_input['assignment_name']
+        )
+        __, data_table = _get_assignment_grade_datatable(
+            course,
+            task_input['assignment_name'],
+            task_progress
+        )
+        TASK_LOG.info(
+            "RGB post: Grade data table loaded for course %s, assignment_name %s",
+            course_key,
+            task_input['assignment_name']
+        )
+
+        current_step = {'step': 'Uploading CSV'}
+        task_progress.update_task_state(extra_meta=current_step)
+
+        # Perform the upload
+        file_pointer = StringIO()
+        create_datatable_csv(file_pointer, data_table)
+        file_pointer.seek(0)
+        files = {'datafile': file_pointer}
+
+        TASK_LOG.info(
+            "RGB post: Starting upload to rgb for course %s, assignment_name %s",
+            course_key,
+            task_input['assignment_name']
+        )
+        error_message, __ = _do_remote_gradebook(
+            task_input['email_id'],
+            course,
+            'post-grades',
+            files=files,
+        )
+
+        if error_message:
+            TASK_LOG.error(
+                "RGB post: Got error on upload to rgb for course %s, assignment_name %s",
+                course_key,
+                task_input['assignment_name']
+            )
+            return _progress_error(error_message, task_progress)
+
+
+        TASK_LOG.info(
+            "RGB post: Done uploading to rgb for course %s, assignment_name %s",
+            course_key,
+            task_input['assignment_name']
+        )
+        current_step = {
+            'step': 'Posted to RGB',
+        }
+
+        task_progress.update_task_state(extra_meta=current_step)
+
+        # Perform the upload
+        current_step = {
+            'step': 'Prepared grades for download',
+        }
+        rows = data_table["data"]
+        rows.insert(0, data_table["header"])
+        start_date = datetime.now(UTC)
+        upload_csv_to_report_store(
+            rows,
+            'grades_{}_uploaded_to_RGB'.format(task_input['assignment_name']),
+            course_id,
+            start_date
+        )
+
+        TASK_LOG.info(
+            "generate_csv: Done uploading gradebook for course %s, assignment_name %s",
+            course_key,
+            task_input['assignment_name']
+        )
+
+        return task_progress.update_task_state(extra_meta=current_step)
+    else:
+        TASK_LOG.error("RGB post: Error in loading course %s", course_key)
+
+    return _progress_error("Error in loading course {}".format(course_key), task_progress)
 
 
 def create_datatable_csv(csv_file, datatable):
@@ -1843,3 +1981,13 @@ def _progress_error(error_msg, task_progress):
     curr_step = {'step': error_msg}
     task_progress.update_task_state(extra_meta=curr_step)
     return UPDATE_STATUS_FAILED
+
+
+def get_course(course_id, task_progress, message):
+    course = None
+    try:
+        course = get_course_by_id(course_id)
+    except Http404:
+        return None, _progress_error(message, task_progress)
+
+    return course, None
