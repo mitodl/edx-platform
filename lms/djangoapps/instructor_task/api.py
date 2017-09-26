@@ -6,7 +6,7 @@ already been submitted, filtered either by running state or input
 arguments.
 
 """
-
+import logging
 import datetime
 import hashlib
 from collections import Counter
@@ -48,6 +48,7 @@ from xmodule.modulestore.django import modulestore
 
 
 TASK_TYPE_EXPORT_GRADES_TO_RGB = "export_grades_to_rgb"
+TASK_LOG = logging.getLogger('edx.celery.task')
 
 
 class SpecificStudentIdMissingError(Exception):
@@ -71,7 +72,7 @@ def get_running_instructor_rgb_tasks(course_id, user):
         task_state__icontains="success",
         task_type=TASK_TYPE_EXPORT_GRADES_TO_RGB,
         updated__lte=now,
-        updated__gte=now - datetime.timedelta(days=5),
+        updated__gte=now - datetime.timedelta(days=2),
         requester=user
     ).order_by('-updated')[0:3]
 
