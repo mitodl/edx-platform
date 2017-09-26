@@ -1799,8 +1799,8 @@ def generate_assignment_grade_csv(_xmodule_instance_args, _entry_id, course_id, 
             task_input['assignment_name']
         )
 
-        rows = data_table["data"]
         task_progress.skipped = task_progress.total - task_progress.attempted
+        rows = data_table["data"]
         rows.insert(0, data_table["header"])
         current_step = {'step': 'Uploading CSV'}
         task_progress.update_task_state(extra_meta=current_step)
@@ -1811,7 +1811,12 @@ def generate_assignment_grade_csv(_xmodule_instance_args, _entry_id, course_id, 
             task_input['assignment_name']
         )
         # Perform the upload
-        upload_csv_to_report_store(rows, 'grades', course_id, start_date)
+        upload_csv_to_report_store(
+            rows,
+            'grades_{}'.format(task_input['assignment_name']),
+            course_id,
+            start_date
+        )
 
         TASK_LOG.info(
             "generate_csv: Done uploading gradebook for course %s, assignment_name %s",
@@ -1925,6 +1930,29 @@ def post_grades_to_rgb(_xmodule_instance_args, _entry_id, course_id, task_input,
         current_step = {
             'step': 'Posted to RGB',
         }
+
+        task_progress.update_task_state(extra_meta=current_step)
+
+        # Perform the upload
+        current_step = {
+            'step': 'Prepared grades for download',
+        }
+        rows = data_table["data"]
+        rows.insert(0, data_table["header"])
+        start_date = datetime.now(UTC)
+        upload_csv_to_report_store(
+            rows,
+            'grades_{}'.format(task_input['assignment_name']),
+            course_id,
+            start_date
+        )
+
+        TASK_LOG.info(
+            "generate_csv: Done uploading gradebook for course %s, assignment_name %s",
+            course_key,
+            task_input['assignment_name']
+        )
+
         return task_progress.update_task_state(extra_meta=current_step)
     else:
         TASK_LOG.error("RGB post: Error in loading course %s", course_key)
