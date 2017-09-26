@@ -1740,11 +1740,13 @@ def upload_ora2_data(
 
 
 def generate_assignment_grade_csv(_xmodule_instance_args, _entry_id, course_id, task_input, action_name):
-    from instructor.views.api import _get_assignment_grade_datatable
+    from lms.djangoapps.instructor.views.api import _get_assignment_grade_datatable
     start_time = time()
     start_date = datetime.now(UTC)
-    num_reports = 1
-    task_progress = TaskProgress(action_name, num_reports, start_time)
+    enrolled_students = CourseEnrollment.objects.users_enrolled_in(course_id)
+    total_enrolled_students = enrolled_students.count()
+
+    task_progress = TaskProgress(action_name, total_enrolled_students, start_time)
     course_key = unicode(course_id)
 
     if not task_input['assignment_name']:
@@ -1786,7 +1788,11 @@ def generate_assignment_grade_csv(_xmodule_instance_args, _entry_id, course_id, 
             course_key,
             task_input['assignment_name']
         )
-        __, data_table = _get_assignment_grade_datatable(course, task_input['assignment_name'])
+        __, data_table = _get_assignment_grade_datatable(
+            course,
+            task_input['assignment_name'],
+            task_progress
+        )
         TASK_LOG.info(
             "generate_csv: Grade data table loaded for course %s, assignment_name %s",
             course_key,
@@ -1794,7 +1800,6 @@ def generate_assignment_grade_csv(_xmodule_instance_args, _entry_id, course_id, 
         )
 
         rows = data_table["data"]
-        task_progress.attempted = task_progress.succeeded = len(rows)
         task_progress.skipped = task_progress.total - task_progress.attempted
         rows.insert(0, data_table["header"])
         current_step = {'step': 'Uploading CSV'}
@@ -1822,13 +1827,14 @@ def generate_assignment_grade_csv(_xmodule_instance_args, _entry_id, course_id, 
     return _progress_error("Error in loading course {}".format(course_key), task_progress)
 
 def post_grades_to_rgb(_xmodule_instance_args, _entry_id, course_id, task_input, action_name):
-    from instructor.views.api import (
+    from lms.djangoapps.instructor.views.api import (
         _do_remote_gradebook,
         _get_assignment_grade_datatable,
     )
     start_time = time()
-    num_reports = 1
-    task_progress = TaskProgress(action_name, num_reports, start_time)
+    enrolled_students = CourseEnrollment.objects.users_enrolled_in(course_id)
+    total_enrolled_students = enrolled_students.count()
+    task_progress = TaskProgress(action_name, total_enrolled_students, start_time)
     course_key = unicode(course_id)
 
     if not task_input['assignment_name']:
@@ -1868,14 +1874,17 @@ def post_grades_to_rgb(_xmodule_instance_args, _entry_id, course_id, task_input,
             course_key,
             task_input['assignment_name']
         )
-        __, data_table = _get_assignment_grade_datatable(course, task_input['assignment_name'])
+        __, data_table = _get_assignment_grade_datatable(
+            course,
+            task_input['assignment_name'],
+            task_progress
+        )
         TASK_LOG.info(
             "RGB post: Grade data table loaded for course %s, assignment_name %s",
             course_key,
             task_input['assignment_name']
         )
 
-        task_progress.attempted = task_progress.succeeded = len(data_table["data"])
         task_progress.skipped = task_progress.total - task_progress.attempted
 
         current_step = {'step': 'Uploading CSV'}
@@ -1915,9 +1924,7 @@ def post_grades_to_rgb(_xmodule_instance_args, _entry_id, course_id, task_input,
         )
         current_step = {
             'step': 'Posted to RGB',
-            'succeeded': 1
         }
-        task_progress.succeeded = 1
         return task_progress.update_task_state(extra_meta=current_step)
     else:
         TASK_LOG.error("RGB post: Error in loading course %s", course_key)

@@ -2451,7 +2451,7 @@ def problem_grade_report(request, course_id):
         })
 
 
-def _get_assignment_grade_datatable(course, assignment_name):
+def _get_assignment_grade_datatable(course, assignment_name, task_progress=None):
     """
     Returns a datatable of students' grades for an assignment in the given course
     """
@@ -2459,8 +2459,26 @@ def _get_assignment_grade_datatable(course, assignment_name):
         return _("No assignment name given"), {}
 
     row_data = []
+    current_step = {'step': 'Calculating Grades'}
+    student_counter = 0
     enrolled_students = CourseEnrollment.objects.users_enrolled_in(course.id)
+    total_enrolled_students = enrolled_students.count()
+
     for student, course_grade, err_msg in CourseGradeFactory().iter(course, enrolled_students):
+        # Periodically update task status (this is a cache write)
+        student_counter += 1
+        if task_progress is not None:
+            task_progress.update_task_state(extra_meta=current_step)
+            task_progress.attempted += 1
+
+        log.info(
+            u'%s, Current step: %s, Grade calculation in-progress for students: %s/%s',
+            assignment_name,
+            current_step,
+            student_counter,
+            total_enrolled_students
+        )
+
         if course_grade and not err_msg:
             matching_assignment_grade = next(
                 ifilter(
@@ -2469,6 +2487,17 @@ def _get_assignment_grade_datatable(course, assignment_name):
                 ), {}
             )
             row_data.append([student.email, matching_assignment_grade.get('percent', 0)])
+            if task_progress is not None:
+                task_progress.succeeded += 1
+        else:
+            if task_progress is not None:
+                task_progress.failed += 1
+
+    if task_progress is not None:
+        task_progress.succeeded = student_counter
+        current_step = {'step': 'Calculated Grades for {} students'.format(student_counter)}
+        task_progress.update_task_state(extra_meta=current_step)
+
     datatable = dict(
         header=[_('External email'), assignment_name],
         data=row_data,
@@ -2816,7 +2845,6 @@ def export_assignment_grades_csv(request, course_id):
     """
     Creates a CSV of students' grades for an assignment and returns that CSV as an HTTP response
     """
-    # course_key = CourseLocator.from_string(course_id)
     course_key = SlashSeparatedCourseKey.from_deprecated_string(course_id)
     assignment_name = request.GET.get('assignment_name', '')
     try:
