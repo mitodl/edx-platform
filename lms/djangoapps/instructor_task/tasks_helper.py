@@ -1939,7 +1939,7 @@ def post_grades_to_rgb(_xmodule_instance_args, _entry_id, course_id, task_input,
         start_date = datetime.now(UTC)
         upload_csv_to_report_store(
             rows,
-            'grades_{}'.format(task_input['assignment_name']),
+            'grades_{}_uploaded_to_RGB'.format(task_input['assignment_name']),
             course_id,
             start_date
         )
