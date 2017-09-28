@@ -103,6 +103,9 @@ if STATIC_URL_BASE:
         STATIC_URL += "/"
     STATIC_URL += EDX_PLATFORM_REVISION + "/"
 
+# Make import of static assets into Mongo modulestore configurable
+WEB_IMPORT_STATIC = ENV_TOKENS.get('WEB_IMPORT_STATIC', True)
+
 # DEFAULT_COURSE_ABOUT_IMAGE_URL specifies the default image to show for courses that don't provide one
 DEFAULT_COURSE_ABOUT_IMAGE_URL = ENV_TOKENS.get('DEFAULT_COURSE_ABOUT_IMAGE_URL', DEFAULT_COURSE_ABOUT_IMAGE_URL)
 
