@@ -3,10 +3,38 @@ Django admin page for CourseOverviews, the basic metadata about a course that
 is used in user dashboard queries and other places where you need info like
 name, and start dates, but don't actually need to crawl into course content.
 """
+import datetime
+import uuid
 from django.contrib import admin
+from opaque_keys.edx.keys import CourseKey
 
 from config_models.admin import ConfigurationModelAdmin
 from .models import CourseOverview, CourseOverviewImageConfig, CourseOverviewImageSet
+from cms.djangoapps.contentstore.rerun_util import rerun
+
+
+def rerun_course(__, request, queryset):
+    for data in queryset:
+        source_course_key = data.id
+        run = '{year}_{slug}'.format(
+            year=datetime.datetime.today().year,
+            slug=uuid.uuid4().hex[:4]
+        )
+        fields = {
+            'display_name': data.display_name
+        }
+        print(type(source_course_key))
+        rerun(
+            CourseKey.from_string(source_course_key),
+            source_course_key.org,
+            source_course_key.course,
+            run,
+            fields,
+            request.user
+        )
+
+
+rerun_course.short_description = "It rerun's the selected course(s)"
 
 
 class CourseOverviewAdmin(admin.ModelAdmin):
@@ -34,6 +62,7 @@ class CourseOverviewAdmin(admin.ModelAdmin):
     ]
 
     search_fields = ['id', 'display_name']
+    actions = [rerun_course]
 
 
 class CourseOverviewImageConfigAdmin(ConfigurationModelAdmin):

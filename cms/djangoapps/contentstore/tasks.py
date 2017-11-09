@@ -10,9 +10,9 @@ from pytz import UTC
 
 from django.contrib.auth.models import User
 
-from contentstore.courseware_index import CoursewareSearchIndexer, LibrarySearchIndexer, SearchIndexingError
-from contentstore.utils import initialize_permissions
-from contentstore.git_export_utils import export_to_git, GitExportError
+from cms.djangoapps.contentstore.courseware_index import CoursewareSearchIndexer, LibrarySearchIndexer, SearchIndexingError
+from cms.djangoapps.contentstore.utils import initialize_permissions
+from cms.djangoapps.contentstore.git_export_utils import export_to_git, GitExportError
 from course_action_state.models import CourseRerunState
 from opaque_keys.edx.keys import CourseKey
 from xmodule.course_module import CourseFields

@@ -37,7 +37,6 @@ from contentstore.course_group_config import (
 from contentstore.course_info_model import get_course_updates, update_course_updates, delete_course_update
 from contentstore.courseware_index import CoursewareSearchIndexer, SearchIndexingError
 from contentstore.push_notification import push_notification_enabled
-from contentstore.tasks import rerun_course
 from contentstore.utils import (
     add_instructor,
     initialize_permissions,
@@ -48,6 +47,7 @@ from contentstore.utils import (
     reverse_usage_url,
     reverse_url,
 )
+from cms.djangoapps.contentstore.rerun_util import rerun
 from contentstore.views.entrance_exam import (
     create_entrance_exam,
     delete_entrance_exam,
@@ -96,7 +96,6 @@ from xmodule.contentstore.content import StaticContent
 from xmodule.course_module import CourseFields
 from xmodule.course_module import DEFAULT_START_DATE
 from xmodule.error_module import ErrorDescriptor
-from xmodule.modulestore import EdxJSONEncoder
 from xmodule.modulestore.django import modulestore
 from xmodule.modulestore.exceptions import ItemNotFoundError, DuplicateCourseError
 from xmodule.tabs import CourseTab, CourseTabList, InvalidTabsException
@@ -834,33 +833,7 @@ def _rerun_course(request, org, number, run, fields):
     Returns the URL for the course listing page.
     """
     source_course_key = CourseKey.from_string(request.json.get('source_course_key'))
-
-    # verify user has access to the original course
-    if not has_studio_write_access(request.user, source_course_key):
-        raise PermissionDenied()
-
-    # create destination course key
-    store = modulestore()
-    with store.default_store('split'):
-        destination_course_key = store.make_course_key(org, number, run)
-
-    # verify org course and run don't already exist
-    if store.has_course(destination_course_key, ignore_case=True):
-        raise DuplicateCourseError(source_course_key, destination_course_key)
-
-    # Make sure user has instructor and staff access to the destination course
-    # so the user can see the updated status for that course
-    add_instructor(destination_course_key, request.user, request.user)
-
-    # Mark the action as initiated
-    CourseRerunState.objects.initiated(source_course_key, destination_course_key, request.user, fields['display_name'])
-
-    # Clear the fields that must be reset for the rerun
-    fields['advertised_start'] = None
-
-    # Rerun the course as a new celery task
-    json_fields = json.dumps(fields, cls=EdxJSONEncoder)
-    rerun_course.delay(unicode(source_course_key), unicode(destination_course_key), request.user.id, json_fields)
+    destination_course_key = rerun(source_course_key, org, number, run, fields, request.user)
 
     # Return course listing page
     return JsonResponse({
