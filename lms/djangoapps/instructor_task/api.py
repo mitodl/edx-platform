@@ -10,6 +10,7 @@ import logging
 import datetime
 from collections import Counter
 import hashlib
+import uuid
 
 from celery.states import READY_STATES
 
@@ -561,7 +562,7 @@ def export_assignment_grades_csv(request, course_key, assignment_name):
     task_input = {
         "assignment_name": assignment_name
     }
-    task_key = ""
+    task_key = uuid.uuid4()
     TASK_LOG.debug("Submitting download grades task")
     return submit_task(request, task_type, task_class, course_key, task_input, task_key)
 
@@ -576,6 +577,6 @@ def export_grades_to_rgb(request, course_key, assignment_name, email):
         "assignment_name": assignment_name,
         "email_id": email
     }
-    task_key = ""
+    task_key = uuid.uuid4()
     TASK_LOG.debug("Submitting grades to RGB task")
     return submit_task(request, task_type, task_class, course_key, task_input, task_key)
