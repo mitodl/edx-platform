@@ -1400,6 +1400,47 @@
   }
 }
 
+// view - export grades
+// --------------------
+.instructor-dashboard-wrapper-2 section.idash-section#remote_gradebook{
+  p.gradebook-name {
+    margin: 20px 0;
+  }
+
+  table.stat_table {
+    font-family: verdana, arial, sans-serif;
+    font-size: 11px;
+    color: #333333;
+    border-width: 1px;
+    border-color: #666666;
+    border-collapse: collapse;
+
+    th {
+      border-width: 1px;
+      padding: 8px;
+      border-style: solid;
+      border-color: #666666;
+      background-color: #dedede;
+    }
+
+    td {
+      border-width: 1px;
+      padding: 8px;
+      border-style: solid;
+      border-color: #666666;
+      background-color: #ffffff;
+    }
+  }
+
+  p.loading {
+    padding: 10px 0;
+  }
+
+  .errors {
+    color: rgb(255, 0, 0);
+  }
+}
+
 // view - metrics
 // --------------------
 .instructor-dashboard-wrapper-2 section.idash-section#metrics {
