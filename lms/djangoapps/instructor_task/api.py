@@ -518,3 +518,32 @@ def regenerate_certificates(request, course_key, statuses_to_regenerate):
     )
 
     return instructor_task
+
+
+def export_assignment_grades_csv(request, course_key, assignment_name):
+    """
+    Submits a task to generate a CSV grade report for an assignment.
+    """
+    task_type = 'export_assignment_grades_csv'
+    task_class = export_assignment_grades_csv_task
+    task_input = {
+        "assignment_name": assignment_name
+    }
+    task_key = hashlib.md5(assignment_name).hexdigest()
+    TASK_LOG.debug("Submitting download grades task")
+    return submit_task(request, task_type, task_class, course_key, task_input, task_key)
+
+
+def export_grades_to_rgb(request, course_key, assignment_name, email):
+    """
+    Submits a task to export assignment grades to a remote gradebook.
+    """
+    task_type = TASK_TYPE_EXPORT_GRADES_TO_RGB
+    task_class = export_grades_to_rgb_task
+    task_input = {
+        "assignment_name": assignment_name,
+        "email_id": email
+    }
+    task_key = hashlib.md5(assignment_name).hexdigest()
+    TASK_LOG.debug("Submitting grades to RGB task")
+    return submit_task(request, task_type, task_class, course_key, task_input, task_key)
