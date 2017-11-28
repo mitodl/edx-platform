@@ -91,6 +91,8 @@ SSL_AUTH_EMAIL_DOMAIN = "MIT.EDU"
 SSL_AUTH_DN_FORMAT_STRING = "/C=US/ST=Massachusetts/O=Massachusetts Institute of Technology/OU=Client CA v1/CN={0}/emailAddress={1}"
 
 GIT_IMPORT_STATIC = True
+GIT_IMPORT_CODE_LIB = True
+COURSE_CODE_LIB_FILENAME = 'python_lib.zip'
 META_UNIVERSITIES = {}
 DATADOG = {}
 EMAIL_FILE_PATH = None
