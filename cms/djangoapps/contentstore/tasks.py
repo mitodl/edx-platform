@@ -202,12 +202,15 @@ def async_export_to_git(course_module, user=None):
     Exports a course to Git.
     """
     try:
+        LOGGER.debug('Starting async course content export to git (course id: %s)', course_module.id)
         export_to_git(course_module.id, course_module.giturl, user=user)
-        LOGGER.debug('Exported course content to git: %s', course_module.id)
     except GitExportError as ex:
-        LOGGER.error('Failed to export course content to git: %s', ex)
+        LOGGER.error('Failed async course content export to git (course id: %s): %s', course_module.id, ex)
     except Exception as ex:
-        LOGGER.error('Unknown error occured while exporting course content to git: %s', ex)
+        LOGGER.error(
+            'Unknown error occured during async course content export to git (course id: %s): %s',
+            course_module.id, ex
+        )
 
 
 class CourseExportTask(UserTask):  # pylint: disable=abstract-method
