@@ -50,11 +50,10 @@ def listen_for_course_publish(sender, course_key, **kwargs):  # pylint: disable=
     # If the Git auto-export is enabled, push the course changes to Git
     if settings.FEATURES.get('ENABLE_EXPORT_GIT') and settings.FEATURES.get('ENABLE_GIT_AUTO_EXPORT'):
         from contentstore.tasks import async_export_to_git
-        course_module = modulestore().get_course(course_key)
         log.info(
-            'Course published with auto-export enabled. Starting export... (course id: %s)', course_module.id
+            'Course published with auto-export enabled. Starting export... (course id: %s)', course_key
         )
-        async_export_to_git.delay(course_module)
+        async_export_to_git.delay(unicode(course_key))
 
 
 @receiver(SignalHandler.library_updated)
