@@ -197,10 +197,12 @@ def push_course_update_task(course_key_string, course_subscription_id, course_di
 
 
 @task()
-def async_export_to_git(course_module, user=None):
+def async_export_to_git(course_key_string, user=None):
     """
     Exports a course to Git.
     """
+    course_key = CourseKey.from_string(course_key_string)
+    course_module = modulestore().get_course(course_key)
     try:
         LOGGER.debug('Starting async course content export to git (course id: %s)', course_module.id)
         export_to_git(course_module.id, course_module.giturl, user=user)
