@@ -285,7 +285,8 @@ def _import_handler(request, courselike_key, root_name, successful_url, context_
                         settings.GITHUB_REPO_ROOT, [dirpath],
                         load_error_modules=False,
                         static_content_store=contentstore(),
-                        target_id=courselike_key
+                        target_id=courselike_key,
+                        do_import_static=getattr(settings, 'WEB_IMPORT_STATIC', True)
                     )
 
                 new_location = courselike_items[0].location
