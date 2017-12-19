@@ -2478,10 +2478,6 @@ def _get_assignment_grade_datatable(course, assignment_name, task_progress=None)
     current_step = {'step': 'Calculating Grades'}
     student_counter = 0
     enrolled_students = CourseEnrollment.objects.users_enrolled_in(course.id)
-<<<<<<< HEAD
-    for student, course_grade, error in CourseGradeFactory().iter(users=enrolled_students, course=course):
-        if course_grade and not error:
-=======
     total_enrolled_students = enrolled_students.count()
 
     for student, course_grade, err_msg in CourseGradeFactory().iter(course, enrolled_students):
@@ -2500,7 +2496,6 @@ def _get_assignment_grade_datatable(course, assignment_name, task_progress=None)
         )
 
         if course_grade and not err_msg:
->>>>>>> f53c183e42... Refactor celery tasks and fixed bugs (#40)
             matching_assignment_grade = next(
                 ifilter(
                     lambda grade_section: grade_section['label'] == assignment_name,
