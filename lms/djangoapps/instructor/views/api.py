@@ -2480,7 +2480,7 @@ def _get_assignment_grade_datatable(course, assignment_name, task_progress=None)
     enrolled_students = CourseEnrollment.objects.users_enrolled_in(course.id)
     total_enrolled_students = enrolled_students.count()
 
-    for student, course_grade, err_msg in CourseGradeFactory().iter(course, enrolled_students):
+    for student, course_grade, error in CourseGradeFactory().iter(users=enrolled_students, course=course):
         # Periodically update task status (this is a cache write)
         student_counter += 1
         if task_progress is not None:
@@ -2495,7 +2495,7 @@ def _get_assignment_grade_datatable(course, assignment_name, task_progress=None)
             total_enrolled_students
         )
 
-        if course_grade and not err_msg:
+        if course_grade and not error:
             matching_assignment_grade = next(
                 ifilter(
                     lambda grade_section: grade_section['label'] == assignment_name,
