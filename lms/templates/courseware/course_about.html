@@ -238,22 +238,21 @@ from openedx.core.lib.courses import course_image_url
           % endif
             ## We plan to ditch end_date (which is not stored in course metadata),
             ## but for backwards compatibility, show about/end_date blob if it exists.
-            % if get_course_about_section(request, course, "end_date") or course.end:
-                <%
-                    course_end_date = course.end
-                %>
-
+            <%
+                course_end_date = get_course_about_section(request, course, "end_date") or course.end
+            %>
+            % if course_end_date:
             <li class="important-dates-item">
                 <span class="icon fa fa-calendar" aria-hidden="true"></span>
                 <p class="important-dates-item-title">${_("Classes End")}</p>
-                  % if isinstance(course_end_date, str):
-                      <span class="important-dates-item-text final-date">${course_end_date}</span>
-                  % else:
-                    <%
-                        course_date_string = course_end_date.strftime('%Y-%m-%dT%H:%M:%S%z')
-                    %>
-                    <span class="important-dates-item-text final-date localized_datetime" data-format="shortDate" data-datetime="${course_date_string}"></span>
-                  % endif
+                    % if isinstance(course_end_date, str):
+                        <span class="important-dates-item-text final-date">${course_end_date}</span>
+                    % else:
+                      <%
+                          course_date_string = course_end_date.strftime('%Y-%m-%dT%H:%M:%S%z')
+                      %>
+                      <span class="important-dates-item-text final-date localized_datetime" data-format="shortDate" data-datetime="${course_date_string}"></span>
+                    % endif
             </li>
             % endif
 
