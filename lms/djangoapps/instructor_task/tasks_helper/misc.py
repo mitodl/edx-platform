@@ -20,9 +20,9 @@ from pytz import UTC
 from courseware.courses import get_course_by_id
 from instructor_analytics.basic import get_proctored_exam_results
 from instructor_analytics.csvs import format_dictlist
-from instructor.views.api import (
-    _do_remote_gradebook,
-    _get_assignment_grade_datatable,
+from instructor.views.instructor_task_helpers import (
+    do_remote_gradebook,
+    get_assignment_grade_datatable,
 )
 from openedx.core.djangoapps.course_groups.cohorts import add_user_to_cohort
 from openedx.core.djangoapps.course_groups.models import CourseUserGroup
@@ -308,7 +308,7 @@ def generate_assignment_grade_csv(_xmodule_instance_args, _entry_id, course_id, 
 
     current_step = {'step': 'Load grades'}
     task_progress.update_task_state(extra_meta=current_step)
-    __, data_table = _get_assignment_grade_datatable(course, task_input['assignment_name'])
+    __, data_table = get_assignment_grade_datatable(course, task_input['assignment_name'])
 
     rows = data_table["data"]
     task_progress.attempted = task_progress.succeeded = len(rows)
@@ -338,7 +338,7 @@ def post_grades_to_rgb(_xmodule_instance_args, _entry_id, course_id, task_input,
 
     current_step = {'step': 'Load grades'}
     task_progress.update_task_state(extra_meta=current_step)
-    __, data_table = _get_assignment_grade_datatable(course, task_input['assignment_name'])
+    __, data_table = get_assignment_grade_datatable(course, task_input['assignment_name'])
 
     task_progress.attempted = task_progress.succeeded = len(data_table["data"])
     task_progress.skipped = task_progress.total - task_progress.attempted
@@ -352,7 +352,7 @@ def post_grades_to_rgb(_xmodule_instance_args, _entry_id, course_id, task_input,
     file_pointer.seek(0)
     files = {'datafile': file_pointer}
 
-    error_message, __ = _do_remote_gradebook(
+    error_message, __ = do_remote_gradebook(
         task_input['email_id'],
         course,
         'post-grades',
