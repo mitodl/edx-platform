@@ -709,6 +709,7 @@
                 var answers;
                 answers = response.answers;
                 $.each(answers, function(key, value) {
+                    key = key.replace(":", "\\:");
                     var answer;
                     if (!$.isArray(value)) {
                         answer = that.$('#answer_' + key + ', #solution_' + key);
@@ -1060,7 +1061,7 @@
             choicegroup: function(element, display, answers, correctStatusHtml) {
                 var answer, choice, inputId, i, len, results, $element, $inputLabel, $inputStatus;
                 $element = $(element);
-                inputId = $element.attr('id').replace(/inputtype_/, '');
+                inputId = $element.attr('id').replace(/inputtype_/, '').replace(":", "\\:");
                 answer = answers[inputId];
                 results = [];
                 for (i = 0, len = answer.length; i < len; i++) {
