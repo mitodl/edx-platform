@@ -212,4 +212,4 @@ web-fragments==0.2.2
 xblock==1.0.0
 
 # Third Party XBlocks
-git+https://github.com/mitodl/edx-sga@df4fcaaef0e946de8fb7423e0d5b4b427d05237f#egg=edx-sga
+git+https://github.com/mitodl/edx-sga@1cd69b118513107e6b86a2dc7c94d4c1a4b91390#egg=edx-sga
