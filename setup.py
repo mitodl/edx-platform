@@ -56,7 +56,8 @@ setup(
             "hidden_content = lms.djangoapps.course_blocks.transformers.hidden_content:HiddenContentTransformer",
             "course_blocks_api = lms.djangoapps.course_api.blocks.transformers.blocks_api:BlocksAPITransformer",
             "milestones = lms.djangoapps.course_api.blocks.transformers.milestones:MilestonesAndSpecialExamsTransformer",
-            "grades = lms.djangoapps.grades.transformer:GradesTransformer",
+            "load_override_data = lms.djangoapps.course_api.blocks.transformers.load_override_data:OverrideDataTransformer",
+            "grades = lms.djangoapps.grades.transformer:GradesTransformer"
         ],
     }
 )

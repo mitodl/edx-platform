@@ -1,11 +1,10 @@
 """
 API function for retrieving course blocks data
 """
-
+from lms.djangoapps.course_api.blocks.transformers.load_override_data import OverrideDataTransformer
 from lms.djangoapps.course_blocks.api import COURSE_BLOCK_ACCESS_TRANSFORMERS, get_course_blocks
 from lms.djangoapps.course_blocks.transformers.hidden_content import HiddenContentTransformer
 from openedx.core.djangoapps.content.block_structure.transformers import BlockStructureTransformers
-
 from .serializers import BlockDictSerializer, BlockSerializer
 from .transformers.blocks_api import BlocksAPITransformer
 from .transformers.milestones import MilestonesAndSpecialExamsTransformer
@@ -56,7 +55,12 @@ def get_blocks(
         include_special_exams = True
     if user is not None:
         transformers += COURSE_BLOCK_ACCESS_TRANSFORMERS
-        transformers += [MilestonesAndSpecialExamsTransformer(include_special_exams), HiddenContentTransformer()]
+        transformers += [
+            MilestonesAndSpecialExamsTransformer(include_special_exams),
+            HiddenContentTransformer(),
+            OverrideDataTransformer(user)
+        ]
+
     transformers += [
         BlocksAPITransformer(
             block_counts,
