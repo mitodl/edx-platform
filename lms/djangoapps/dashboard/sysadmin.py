@@ -429,7 +429,7 @@ class Courses(SysadminDashboardView):
         for course in self.get_courses():
             gdir = course.id.course
             data.append([course.display_name, course.id.to_deprecated_string()]
-                        + self.git_info_for_course(gdir))
+                        + ['', '', '']) # + self.git_info_for_course(gdir)) FIXME (TMM 2018/02/13)
 
         return dict(header=[_('Course Name'),
                             _('Directory/ID'),
