@@ -48,6 +48,7 @@ from lms.djangoapps.lms_xblock.models import XBlockAsidesConfig
 from lms.djangoapps.lms_xblock.runtime import LmsModuleSystem
 from lms.djangoapps.verify_student.services import VerificationService
 from openedx.core.djangoapps.bookmarks.services import BookmarksService
+from openedx.core.djangoapps.common_views.xblock import invoke_xblock_aside_handler
 from openedx.core.djangoapps.crawlers.models import CrawlersConfig
 from openedx.core.djangoapps.credit.services import CreditService
 from openedx.core.djangoapps.monitoring_utils import set_custom_metrics_for_course_key, set_monitoring_transaction_name
@@ -61,7 +62,8 @@ from openedx.core.lib.xblock_utils import (
     replace_course_urls,
     replace_jump_to_id_urls,
     replace_static_urls,
-    wrap_xblock
+    wrap_xblock,
+    is_xblock_aside
 )
 from student.models import anonymous_id_for_user, user_by_anonymous_id
 from student.roles import CourseBetaTesterRole
@@ -949,6 +951,10 @@ def handle_xblock_callback(request, course_id, usage_id, handler, suffix=None):
         return HttpResponseForbidden()
 
     request.user.known = request.user.is_authenticated()
+
+    usage_key = UsageKey.from_string(usage_id)
+    if is_xblock_aside(usage_key):
+        return invoke_xblock_aside_handler(request, usage_key, handler, suffix=suffix)
 
     try:
         course_key = CourseKey.from_string(course_id)
