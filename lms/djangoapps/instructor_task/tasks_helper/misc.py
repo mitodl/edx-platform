@@ -363,10 +363,8 @@ def post_grades_to_rgb(_xmodule_instance_args, _entry_id, course_id, task_input,
         return _progress_error(error_message, task_progress)
 
     current_step = {
-        'step': 'Posted to RGB',
-        'succeeded': 1
+        'step': 'Posted to RGB'
     }
-    task_progress.succeeded = 1
     return task_progress.update_task_state(extra_meta=current_step)
 
 
