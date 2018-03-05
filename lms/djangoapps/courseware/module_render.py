@@ -61,7 +61,9 @@ from openedx.core.lib.xblock_utils import (
     replace_course_urls,
     replace_jump_to_id_urls,
     replace_static_urls,
-    wrap_xblock
+    wrap_xblock,
+    is_xblock_aside,
+    get_aside_from_xblock,
 )
 from student.models import anonymous_id_for_user, user_by_anonymous_id
 from student.roles import CourseBetaTesterRole
@@ -350,9 +352,8 @@ def get_xqueue_callback_url_prefix(request):
 
 
 def get_module_for_descriptor(user, request, descriptor, field_data_cache, course_key,
-                              position=None, wrap_xmodule_display=True, grade_bucket_type=None,
-                              static_asset_path='', disable_staff_debug_info=False,
-                              course=None):
+                              aside_descriptor=None, position=None, wrap_xmodule_display=True, grade_bucket_type=None,
+                              static_asset_path='', disable_staff_debug_info=False, course=None):
     """
     Implements get_module, extracting out the request-specific functionality.
 
@@ -375,6 +376,7 @@ def get_module_for_descriptor(user, request, descriptor, field_data_cache, cours
         descriptor=descriptor,
         student_data=student_data,
         course_id=course_key,
+        aside_descriptor=aside_descriptor,
         track_function=track_function,
         xqueue_callback_url_prefix=xqueue_callback_url_prefix,
         position=position,
@@ -800,9 +802,9 @@ def get_module_system_for_user(
 # get a loaded course passed into it
 def get_module_for_descriptor_internal(user, descriptor, student_data, course_id,  # pylint: disable=invalid-name
                                        track_function, xqueue_callback_url_prefix, request_token,
-                                       position=None, wrap_xmodule_display=True, grade_bucket_type=None,
-                                       static_asset_path='', user_location=None, disable_staff_debug_info=False,
-                                       course=None):
+                                       aside_descriptor=None, position=None, wrap_xmodule_display=True,
+                                       grade_bucket_type=None, static_asset_path='', user_location=None,
+                                       disable_staff_debug_info=False, course=None):
     """
     Actually implement get_module, without requiring a request.
 
@@ -829,7 +831,11 @@ def get_module_for_descriptor_internal(user, descriptor, student_data, course_id
         course=course
     )
 
-    descriptor.bind_for_student(
+    # If `aside_descriptor` was provided, we want to bind that descriptor for the given user instead of the descriptor
+    # for the XBlock it wraps.
+    descriptor_to_bind = descriptor if aside_descriptor is None else aside_descriptor
+
+    descriptor_to_bind.bind_for_student(
         system,
         user.id,
         [
@@ -838,7 +844,7 @@ def get_module_for_descriptor_internal(user, descriptor, student_data, course_id
         ],
     )
 
-    descriptor.scope_ids = descriptor.scope_ids._replace(user_id=user.id)
+    descriptor_to_bind.scope_ids = descriptor_to_bind.scope_ids._replace(user_id=user.id)
 
     # Do not check access when it's a noauth request.
     # Not that the access check needs to happen after the descriptor is bound
@@ -846,9 +852,9 @@ def get_module_for_descriptor_internal(user, descriptor, student_data, course_id
     # that affects xblock visibility.
     user_needs_access_check = getattr(user, 'known', True) and not isinstance(user, SystemUser)
     if user_needs_access_check:
-        if not has_access(user, 'load', descriptor, course_id):
+        if not has_access(user, 'load', descriptor_to_bind, course_id):
             return None
-    return descriptor
+    return descriptor_to_bind
 
 
 def load_single_xblock(request, user_id, course_id, usage_key_string, course=None):
@@ -964,7 +970,10 @@ def handle_xblock_callback(request, course_id, usage_id, handler, suffix=None):
         return _invoke_xblock_handler(request, course_id, usage_id, handler, suffix, course=course)
 
 
-def get_module_by_usage_id(request, course_id, usage_id, disable_staff_debug_info=False, course=None):
+def get_module_by_usage_id(
+        request, course_id, usage_id,
+        aside_usage_id=None, disable_staff_debug_info=False, course=None
+):
     """
     Gets a module instance based on its `usage_id` in a course, for a given request/user
 
@@ -988,6 +997,20 @@ def get_module_by_usage_id(request, course_id, usage_id, disable_staff_debug_inf
             usage_key
         )
         raise Http404
+
+    aside_descriptor = None
+    if aside_usage_id:
+        try:
+            aside_usage_key = UsageKey.from_string(aside_usage_id)
+            aside_descriptor = get_aside_from_xblock(descriptor, aside_usage_key.aside_type)
+        except InvalidKeyError:
+            raise Http404("Invalid location")
+        except ItemNotFoundError:
+            log.warn(
+                "Aside not found with usage id %s",
+                aside_usage_id
+            )
+            raise Http404
 
     tracking_context = {
         'module': {
@@ -1014,6 +1037,7 @@ def get_module_by_usage_id(request, course_id, usage_id, disable_staff_debug_inf
         descriptor,
         field_data_cache,
         usage_key.course_key,
+        aside_descriptor=aside_descriptor,
         disable_staff_debug_info=disable_staff_debug_info,
         course=course
     )
@@ -1053,7 +1077,18 @@ def _invoke_xblock_handler(request, course_id, usage_id, handler, suffix, course
     set_custom_metrics_for_course_key(course_key)
 
     with modulestore().bulk_operations(course_key):
-        instance, tracking_context = get_module_by_usage_id(request, course_id, usage_id, course=course)
+        usage_key = UsageKey.from_string(usage_id)
+        if is_xblock_aside(usage_key):
+            # Get the usage key for the block being wrapped by the aside (not the aside itself)
+            block_usage_key = usage_key.usage_key
+            aside_usage_id = usage_id
+        else:
+            block_usage_key = usage_key
+            aside_usage_id = None
+
+        instance, tracking_context = get_module_by_usage_id(
+            request, course_id, unicode(block_usage_key), aside_usage_id=aside_usage_id, course=course
+        )
 
         # Name the transaction so that we can view XBlock handlers separately in
         # New Relic. The suffix is necessary for XModule handlers because the
