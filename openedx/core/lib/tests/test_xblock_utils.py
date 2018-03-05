@@ -8,6 +8,7 @@ import uuid
 import ddt
 from django.test.client import RequestFactory
 from mock import patch
+from mock import patch
 from web_fragments.fragment import Fragment
 from six import text_type
 
