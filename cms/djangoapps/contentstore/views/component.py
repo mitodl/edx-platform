@@ -20,8 +20,7 @@ from contentstore.utils import get_lms_link_for_item, reverse_course_url
 from contentstore.views.helpers import get_parent_xblock, is_unit, xblock_type_display_name
 from contentstore.views.item import StudioEditModuleRuntime, add_container_page_publishing_info, create_xblock_info
 from edxmako.shortcuts import render_to_response
-from openedx.core.djangoapps.common_views.xblock import invoke_xblock_aside_handler
-from openedx.core.lib.xblock_utils import is_xblock_aside
+from openedx.core.lib.xblock_utils import is_xblock_aside, get_aside_from_xblock
 from student.auth import has_course_author_access
 from xblock_django.api import authorable_xblocks, disabled_xblocks
 from xblock_django.models import XBlockStudioConfigurationFlag
@@ -442,22 +441,29 @@ def component_handler(request, usage_key_string, handler, suffix=''):
             django response
     """
     usage_key = UsageKey.from_string(usage_key_string)
-    if is_xblock_aside(usage_key):
-        return invoke_xblock_aside_handler(request, usage_key, handler, suffix=suffix)
 
     # Let the module handle the AJAX
     req = django_to_webob_request(request)
 
     try:
-        descriptor = modulestore().get_item(usage_key)
-        descriptor.xmodule_runtime = StudioEditModuleRuntime(request.user)
-        resp = descriptor.handle(handler, req, suffix)
+        if is_xblock_aside(usage_key):
+            # Get the descriptor for the block being wrapped by the aside (not the aside itself)
+            descriptor = modulestore().get_item(usage_key.usage_key)
+            aside_instance = get_aside_from_xblock(descriptor, usage_key.aside_type)
+            aside_instance.runtime = StudioEditModuleRuntime(request.user)
+            asides = [aside_instance]
+            resp = aside_instance.handle(handler, req, suffix)
+        else:
+            descriptor = modulestore().get_item(usage_key)
+            descriptor.xmodule_runtime = StudioEditModuleRuntime(request.user)
+            asides = []
+            resp = descriptor.handle(handler, req, suffix)
     except NoSuchHandlerError:
         log.info("XBlock %s attempted to access missing handler %r", descriptor, handler, exc_info=True)
         raise Http404
 
     # unintentional update to handle any side effects of handle call
     # could potentially be updating actual course data or simply caching its values
-    modulestore().update_item(descriptor, request.user.id)
+    modulestore().update_item(descriptor, request.user.id, asides=asides)
 
     return webob_to_django_response(resp)
