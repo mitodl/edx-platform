@@ -518,7 +518,8 @@ def is_xblock_aside(usage_key):
 
 def get_aside_from_xblock(xblock, aside_type):
     """
-    Gets an instance of an XBlock aside from the XBlock that it's decorating
+    Gets an instance of an XBlock aside from the XBlock that it's decorating. This also
+    configures the aside instance with the runtime and fields of the given XBlock.
 
     Args:
         xblock (xblock.core.XBlock): The XBlock that the desired aside is decorating
@@ -527,6 +528,4 @@ def get_aside_from_xblock(xblock, aside_type):
     Returns:
         xblock.core.XBlockAside: Instance of an xblock aside
     """
-    for aside in xblock.runtime.get_asides(xblock):
-        if aside.scope_ids.block_type == aside_type:
-            return aside
+    return xblock.runtime.get_aside_of_type(xblock, aside_type)
