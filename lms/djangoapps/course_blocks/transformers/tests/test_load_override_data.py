@@ -61,7 +61,7 @@ class TestOverrideDataTransformer(ModuleStoreTestCase):
         OverrideDataTransformer.collect(self.block_structure)
 
         # transform phase
-        OverrideDataTransformer().transform(
+        OverrideDataTransformer(self.learner).transform(
             usage_info=self.course_usage_key,
             block_structure=self.block_structure,
         )
@@ -83,7 +83,7 @@ class TestOverrideDataTransformer(ModuleStoreTestCase):
         OverrideDataTransformer.collect(self.block_structure)
 
         # transform phase
-        OverrideDataTransformer().transform(
+        OverrideDataTransformer(self.learner).transform(
             usage_info=self.course_usage_key,
             block_structure=self.block_structure,
         )

@@ -55,7 +55,7 @@ def get_blocks(
     if requested_fields is not None and 'special_exam_info' in requested_fields:
         include_special_exams = True
     if user is not None:
-        transformers += course_blocks_api.get_course_block_access_transformers()
+        transformers += course_blocks_api.get_course_block_access_transformers(user)
         transformers += [MilestonesAndSpecialExamsTransformer(include_special_exams), HiddenContentTransformer()]
     transformers += [
         BlocksAPITransformer(
