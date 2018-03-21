@@ -449,17 +449,16 @@ def component_handler(request, usage_key_string, handler, suffix=''):
         if is_xblock_aside(usage_key):
             # Get the descriptor for the block being wrapped by the aside (not the aside itself)
             descriptor = modulestore().get_item(usage_key.usage_key)
-            aside_instance = get_aside_from_xblock(descriptor, usage_key.aside_type)
-            aside_instance.runtime = StudioEditModuleRuntime(request.user)
-            asides = [aside_instance]
-            resp = aside_instance.handle(handler, req, suffix)
+            handler_descriptor = get_aside_from_xblock(descriptor, usage_key.aside_type)
+            asides = [handler_descriptor]
         else:
             descriptor = modulestore().get_item(usage_key)
-            descriptor.xmodule_runtime = StudioEditModuleRuntime(request.user)
+            handler_descriptor = descriptor
             asides = []
-            resp = descriptor.handle(handler, req, suffix)
+        handler_descriptor.xmodule_runtime = StudioEditModuleRuntime(request.user)
+        resp = handler_descriptor.handle(handler, req, suffix)
     except NoSuchHandlerError:
-        log.info("XBlock %s attempted to access missing handler %r", descriptor, handler, exc_info=True)
+        log.info("XBlock %s attempted to access missing handler %r", handler_descriptor, handler, exc_info=True)
         raise Http404
 
     # unintentional update to handle any side effects of handle call
