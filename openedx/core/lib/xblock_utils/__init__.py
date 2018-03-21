@@ -154,7 +154,8 @@ def wrap_xblock_aside(
         context,                        # pylint: disable=unused-argument
         usage_id_serializer,
         request_token,                   # pylint: disable=redefined-outer-name
-        extra_data=None
+        extra_data=None,
+        extra_classes=None
 ):
     """
     Wraps the results of rendering an XBlockAside view in a standard <section> with identifying
@@ -170,6 +171,7 @@ def wrap_xblock_aside(
     :param request_token: An identifier that is unique per-request, so that only xblocks
         rendered as part of this request will have their javascript initialized.
     :param extra_data: A dictionary with extra data values to be set on the wrapper
+    :param extra_classes: A list with extra classes to be set on the wrapper element
     """
 
     if extra_data is None:
@@ -186,6 +188,8 @@ def wrap_xblock_aside(
         ),
         'xblock_asides-v1'
     ]
+    if extra_classes:
+        css_classes.extend(extra_classes)
 
     if frag.js_init_fn:
         data['init'] = frag.js_init_fn
