@@ -6,10 +6,11 @@ already been submitted, filtered either by running state or input
 arguments.
 
 """
-
+import datetime
 
 import hashlib
 from collections import Counter
+from pytz import UTC
 
 import six
 from celery.states import READY_STATES
@@ -41,7 +42,7 @@ from lms.djangoapps.instructor_task.tasks import (
     proctored_exam_results_csv,
     rescore_problem,
     reset_problem_attempts,
-    send_bulk_course_email
+    send_bulk_course_email,
 )
 from remote_gradebook.constants import RGB_TASK_TYPES
 from canvas_integration.constants import CANVAS_TASK_TYPES
