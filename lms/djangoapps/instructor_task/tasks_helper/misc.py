@@ -522,3 +522,10 @@ def generate_anonymous_ids(_xmodule_instance_args, _entry_id, course_id, task_in
     upload_csv_to_report_store([header] + rows, csv_name, course_id, start_date)
 
     return UPDATE_STATUS_SUCCEEDED
+
+
+def _progress_error(error_msg, task_progress):
+    task_progress.failed = 1
+    curr_step = {'step': error_msg}
+    task_progress.update_task_state(extra_meta=curr_step)
+    return UPDATE_STATUS_FAILED

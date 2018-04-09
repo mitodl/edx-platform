@@ -126,7 +126,7 @@ from .tools import (
     parse_datetime,
     require_student_from_identifier,
     set_due_date_extension,
-    strip_if_string
+    strip_if_string,
 )
 
 log = logging.getLogger(__name__)
@@ -565,7 +565,9 @@ def create_and_enroll_user(email, username, name, country, password, course_id, 
     except Exception as ex:  # pylint: disable=broad-except
         log.exception(type(ex).__name__)
         errors.append({
-            'username': username, 'email': email, 'response': type(ex).__name__,
+            'username': username,
+            'email': email,
+            'response': type(ex).__name__
         })
     else:
         try:
