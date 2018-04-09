@@ -81,6 +81,7 @@ setup(
             "instructor = lms.djangoapps.instructor.apps:InstructorConfig",
             "password_policy = openedx.core.djangoapps.password_policy.apps:PasswordPolicyConfig",
             "user_authn = openedx.core.djangoapps.user_authn.apps:UserAuthnConfig"
+            "remote_gradebook = lms.djangoapps.remote_gradebook.apps:RemoteGradebookConfig"
         ],
         "cms.djangoapp": [
             "ace_common = openedx.core.djangoapps.ace_common.apps:AceCommonConfig",
