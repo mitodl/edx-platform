@@ -76,7 +76,10 @@ from lms.djangoapps.instructor.enrollment import (
     unenroll_email
 )
 from lms.djangoapps.instructor.views import INVOICE_KEY
-from lms.djangoapps.instructor.views.instructor_task_helpers import extract_email_features, extract_task_features
+from lms.djangoapps.instructor.views.instructor_task_helpers import (
+    extract_email_features,
+    extract_task_features,
+)
 from lms.djangoapps.instructor_task import api as task_api
 from lms.djangoapps.instructor_task.api_helper import AlreadyRunningError, QueueConnectionError
 from lms.djangoapps.instructor_task.models import ReportStore
@@ -137,7 +140,7 @@ from .tools import (
     parse_datetime,
     require_student_from_identifier,
     set_due_date_extension,
-    strip_if_string
+    strip_if_string,
 )
 
 log = logging.getLogger(__name__)
@@ -576,7 +579,9 @@ def create_and_enroll_user(email, username, name, country, password, course_id, 
     except Exception as ex:  # pylint: disable=broad-except
         log.exception(type(ex).__name__)
         errors.append({
-            'username': username, 'email': email, 'response': type(ex).__name__,
+            'username': username,
+            'email': email,
+            'response': type(ex).__name__
         })
     else:
         try:
@@ -1913,7 +1918,10 @@ def list_instructor_tasks(request, course_id):
             history for problem AND student (intersection)
     """
     include_remote_gradebook = request.GET.get('include_remote_gradebook') is not None
+<<<<<<< HEAD
     include_canvas = request.GET.get('include_canvas') is not None
+=======
+>>>>>>> a83b035602... Reimplemented legacy dashboard enrollment data functionality (60a6ddc7c1)
     course_id = CourseKey.from_string(course_id)
     problem_location_str = strip_if_string(request.POST.get('problem_location_str', False))
     student = request.POST.get('unique_student_identifier', None)
