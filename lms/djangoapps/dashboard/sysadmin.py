@@ -356,7 +356,7 @@ class Courses(SysadminDashboardView):
                 info[1] = logs[1]
                 info[2] = logs[2]
             else:
-                # if course do not have git commit hash the import and cach.
+                # if a course do not have git commit hash then fetch from git and cache.
                 cmd = ''
                 gdir = settings.DATA_DIR / cdir
 
