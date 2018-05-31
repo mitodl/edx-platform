@@ -206,6 +206,10 @@ def register_user(request, extra_context=None):
     if request.user.is_authenticated():
         return redirect(redirect_to)
 
+    if settings.FEATURES.get('AUTH_USE_CAS'):
+        # If CAS is enabled, redirect auth handling to there
+        return redirect(reverse('cas-login'))
+
     external_auth_response = external_auth_register(request)
     if external_auth_response is not None:
         return external_auth_response
