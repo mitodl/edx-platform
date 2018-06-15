@@ -16,6 +16,7 @@ from courseware.model_data import DjangoKeyValueStore, FieldDataCache
 from courseware.models import StudentModule
 from courseware.module_render import get_module_for_descriptor_internal
 from lms.djangoapps.grades.events import GRADES_OVERRIDE_EVENT_TYPE, GRADES_RESCORE_EVENT_TYPE
+from lms.djangoapps.instructor.views.tools import get_student_from_identifier
 from track.event_transaction_utils import create_new_event_transaction_id, set_event_transaction_type
 from track.views import task_track
 from util.db import outer_atomic
@@ -412,9 +413,7 @@ def _get_modules_to_update(course_id, usage_keys, student_identifier, filter_fcn
         if student_identifier is None:
             return None
 
-        student_identifier_type = 'email' if '@' in student_identifier else 'username'
-        student_query_params = {student_identifier_type: student_identifier}
-        return User.objects.get(**student_query_params)
+        return get_student_from_identifier(student_identifier)
 
     module_query_params = {'course_id': course_id, 'module_state_keys': usage_keys}
 
