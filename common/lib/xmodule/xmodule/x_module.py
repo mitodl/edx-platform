@@ -1116,7 +1116,14 @@ class XModuleDescriptor(HTMLSnippet, ResourceTemplates, XModuleMixin):
         node.tag = exported_node.tag
         node.text = exported_node.text
         node.tail = exported_node.tail
+        keys = exported_node.keys()
+        expected_keys = ['url_name', 'org', 'course']
+
         for key, value in exported_node.items():
+            if all(attr in keys for attr in expected_keys) and key == 'url_name':
+                # set url_name to course run in xml. In split module this value is set to a constant
+                # course.
+                value = exported_node.get(expected_keys[2], value)
             node.set(key, value)
 
         node.extend(list(exported_node))
