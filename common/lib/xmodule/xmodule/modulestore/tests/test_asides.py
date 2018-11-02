@@ -17,6 +17,7 @@ class AsideTestType(XBlockAside):
 
     content = String(default="default_content", scope=Scope.content)
     data_field = String(default="default_data", scope=Scope.settings)
+    has_score = String(default=False, scope=Scope.settings)
 
     @XBlockAside.aside_for('student_view')
     def student_view_aside(self, block, context):  # pylint: disable=unused-argument
