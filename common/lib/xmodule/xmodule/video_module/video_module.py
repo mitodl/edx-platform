@@ -18,6 +18,7 @@ import logging
 import random
 from collections import defaultdict, OrderedDict
 from operator import itemgetter
+from fs.path import combine
 
 from pkg_resources import resource_string
 
@@ -725,7 +726,13 @@ class VideoDescriptor(VideoFields, VideoTranscriptsMixin, VideoStudioViewHandler
         if edxval_api and edx_video_id:
             try:
                 # Create static dir if not created earlier.
-                resource_fs.makedirs(EXPORT_IMPORT_STATIC_DIR, recreate=True)
+                resource_fs.makedirs(
+                    combine(
+                        EXPORT_IMPORT_COURSE_DIR,
+                        EXPORT_IMPORT_STATIC_DIR
+                    ),
+                    recreate=True
+                )
 
                 xml.append(
                     edxval_api.export_to_xml(
