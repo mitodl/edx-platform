@@ -465,8 +465,10 @@ class BulkEmailFlag(ConfigurationModel):
         elif BulkEmailFlag.current().require_course_email_auth:
             if course_id is None:
                 return False
+            if settings.FEATURES.get('COURSE_EMAIL_ENABLED_DEFAULT'):
+                return True
             else:
-                return settings.FEATURES.get('COURSE_EMAIL_ENABLED_DEFAULT')
+                return CourseAuthorization.instructor_email_enabled(course_id)
         else:  # implies enabled == True and require_course_email == False, so email is globally enabled
             return True
 
