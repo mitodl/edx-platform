@@ -106,6 +106,8 @@ FEATURES = {
 
     'DISABLE_LOGIN_BUTTON': False,  # used in systems where login is automatic, eg MIT SSL
 
+    'COURSE_EMAIL_ENABLED_DEFAULT': False,  # set true to enable bulk email for all courses
+
     # extrernal access methods
     'AUTH_USE_OPENID': False,
     'AUTH_USE_CERTIFICATES': False,

@@ -5,6 +5,7 @@ import logging
 
 import markupsafe
 from config_models.models import ConfigurationModel
+from django.conf import settings
 from django.contrib.auth.models import User
 from django.db import models
 from opaque_keys.edx.django.models import CourseKeyField
@@ -465,7 +466,7 @@ class BulkEmailFlag(ConfigurationModel):
             if course_id is None:
                 return False
             else:
-                return CourseAuthorization.instructor_email_enabled(course_id)
+                return settings.FEATURES.get('COURSE_EMAIL_ENABLED_DEFAULT')
         else:  # implies enabled == True and require_course_email == False, so email is globally enabled
             return True
 
