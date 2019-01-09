@@ -540,6 +540,30 @@ class AccessTestCase(LoginEnrollmentTestCase, ModuleStoreTestCase, MilestonesTes
         )
         self.assertFalse(access._has_access_course(user, 'enroll', course))
 
+    @patch.dict('django.conf.settings.FEATURES', {'COURSE_DEFAULT_INVITE_ONLY': False})
+    def test__course_default_invite_only_flag(self):
+        """Tests that default value of COURSE_DEFAULT_INVITE_ONLY as False."""
+
+        user = UserFactory.create()
+
+        course = CourseFactory(invitation_only=True)
+        self.assertFalse(access._has_access_course(user, 'enroll', course))
+
+        course = CourseFactory(invitation_only=False)
+        self.assertFalse(access._has_access_course(user, 'enroll', course))
+
+    @patch.dict('django.conf.settings.FEATURES', {'COURSE_DEFAULT_INVITE_ONLY': True})
+    def test__course_default_invite_only_flag(self):
+        """Tests that default value of COURSE_DEFAULT_INVITE_ONLY as True."""
+
+        user = UserFactory.create()
+
+        course = CourseFactory(invitation_only=True)
+        self.assertFalse(access._has_access_course(user, 'enroll', course))
+
+        course = CourseFactory(invitation_only=False)
+        self.assertFalse(access._has_access_course(user, 'enroll', course))
+
     def test__user_passed_as_none(self):
         """Ensure has_access handles a user being passed as null"""
         access.has_access(None, 'staff', 'global', None)
