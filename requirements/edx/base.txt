@@ -127,7 +127,7 @@ edx-rest-api-client==1.7.1
 edx-search==1.2.1
 edx-submissions==2.0.12
 edx-user-state-client==1.0.4
-edxval==0.1.16
+git@github.com:mitodl/edx-val@ec6822ec909b3f1c9a549709519905a9cf800c37#egg=edx-val
 elasticsearch==1.9.0      # via edx-search
 enum34==1.1.6
 event-tracking==0.2.4
