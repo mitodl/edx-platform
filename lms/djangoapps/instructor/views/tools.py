@@ -247,7 +247,7 @@ def add_block_ids(payload):
                 ele['block_id'] = UsageKey.from_string(ele['module_id']).block_id
 
 
-def get_display_name_from_usage_key(key):
+def get_display_name_from_usage_key(key, course):
     """
     Returns problem display name from given block UsageKey.
 
@@ -257,7 +257,4 @@ def get_display_name_from_usage_key(key):
     Returns:
         String : Returns the display name of block if exists else 'Deleted'.
     """
-    try:
-        return modulestore().get_item(key).display_name
-    except ItemNotFoundError:
-        return "Deleted"
+    return course.get_child(key).display_name
