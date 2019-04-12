@@ -257,4 +257,8 @@ def get_display_name_from_usage_key(key, course):
     Returns:
         String : Returns the display name of block if exists else 'Deleted'.
     """
-    return course.get_child(key).display_name
+    block = course.get_child(key)
+    if block:
+        return block.display_name
+    else:
+        return 'Deleted'
