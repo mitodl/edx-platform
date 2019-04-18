@@ -4,7 +4,7 @@ Remote Gradebook API endpoint urls.
 
 from django.conf.urls import url
 
-from remote_gradebook import views
+from lms.djangoapps.remote_gradebook import views
 
 urlpatterns = [
     url(r'^get_remote_gradebook_sections$', views.get_remote_gradebook_sections, name="get_remote_gradebook_sections"),
