@@ -13,8 +13,8 @@ from django.utils.translation import ugettext_noop
 from instructor_task.api_helper import submit_task
 from instructor_task.tasks_base import BaseInstructorTask
 from instructor_task.tasks_helper.runner import run_main_task
-from remote_gradebook.task_helpers import generate_assignment_grade_csv, post_grades_to_rgb
-from remote_gradebook.constants import (
+from lms.djangoapps.remote_gradebook.task_helpers import generate_assignment_grade_csv, post_grades_to_rgb
+from lms.djangoapps.remote_gradebook.constants import (
     TASK_TYPE_RGB_EXPORT_ASSIGNMENT_GRADES,
     TASK_TYPE_RGB_EXPORT_GRADES,
 )
@@ -32,7 +32,7 @@ def run_rgb_grade_export(request, course_key, assignment_name, email):
         "assignment_name": assignment_name,
         "email_id": email
     }
-    task_key = hashlib.md5(assignment_name).hexdigest()
+    task_key = hashlib.md5(assignment_name.encode("utf8")).hexdigest()
     TASK_LOG.debug("Submitting task to export grades to RGB")
     return submit_task(request, task_type, task_class, course_key, task_input, task_key)
 
@@ -46,7 +46,7 @@ def run_assignment_grades_csv_export(request, course_key, assignment_name):
     task_input = {
         "assignment_name": assignment_name
     }
-    task_key = hashlib.md5(assignment_name).hexdigest()
+    task_key = hashlib.md5(assignment_name.encode("utf8")).hexdigest()
     TASK_LOG.debug("Submitting task to export assignment grades to csv")
     return submit_task(request, task_type, task_class, course_key, task_input, task_key)
 

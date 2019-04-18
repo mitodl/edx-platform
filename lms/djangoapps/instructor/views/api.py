@@ -117,6 +117,8 @@ from openedx.core.lib.api.view_utils import DeveloperErrorViewMixin
 from xmodule.modulestore.django import modulestore
 
 from .. import permissions
+from rapid_response_xblock.utils import get_run_submission_data
+
 from .tools import (
     dump_module_extensions,
     dump_student_extensions,
@@ -1068,6 +1070,143 @@ def get_grading_config(request, course_id):
     return JsonResponse(response_payload)
 
 
+@ensure_csrf_cookie
+@cache_control(no_cache=True, no_store=True, must_revalidate=True)
+@require_course_permission(permissions.CAN_RESEARCH)
+def get_sale_records(request, course_id, csv=False):  # pylint: disable=redefined-outer-name
+    """
+    return the summary of all sales records for a particular course
+    """
+    course_id = CourseKey.from_string(course_id)
+    query_features = [
+        'company_name', 'company_contact_name', 'company_contact_email', 'total_codes', 'total_used_codes',
+        'total_amount', 'created', 'customer_reference_number', 'recipient_name', 'recipient_email', 'created_by',
+        'internal_reference', 'invoice_number', 'codes', 'course_id'
+    ]
+
+    sale_data = instructor_analytics.basic.sale_record_features(course_id, query_features)
+
+    if not csv:
+        for item in sale_data:
+            item['created_by'] = item['created_by'].username
+
+        response_payload = {
+            'course_id': text_type(course_id),
+            'sale': sale_data,
+            'queried_features': query_features
+        }
+        return JsonResponse(response_payload)
+    else:
+        header, datarows = instructor_analytics.csvs.format_dictlist(sale_data, query_features)
+        return instructor_analytics.csvs.create_csv_response("e-commerce_sale_invoice_records.csv", header, datarows)
+
+
+@ensure_csrf_cookie
+@cache_control(no_cache=True, no_store=True, must_revalidate=True)
+@require_course_permission(permissions.CAN_RESEARCH)
+def get_sale_order_records(request, course_id):
+    """
+    return the summary of all sales records for a particular course
+    """
+    course_id = CourseKey.from_string(course_id)
+    query_features = [
+        ('id', 'Order Id'),
+        ('company_name', 'Company Name'),
+        ('company_contact_name', 'Company Contact Name'),
+        ('company_contact_email', 'Company Contact Email'),
+        ('logged_in_username', 'Login Username'),
+        ('logged_in_email', 'Login User Email'),
+        ('purchase_time', 'Date of Sale'),
+        ('customer_reference_number', 'Customer Reference Number'),
+        ('recipient_name', 'Recipient Name'),
+        ('recipient_email', 'Recipient Email'),
+        ('bill_to_street1', 'Street 1'),
+        ('bill_to_street2', 'Street 2'),
+        ('bill_to_city', 'City'),
+        ('bill_to_state', 'State'),
+        ('bill_to_postalcode', 'Postal Code'),
+        ('bill_to_country', 'Country'),
+        ('order_type', 'Order Type'),
+        ('status', 'Order Item Status'),
+        ('coupon_code', 'Coupon Code'),
+        ('list_price', 'List Price'),
+        ('unit_cost', 'Unit Price'),
+        ('quantity', 'Quantity'),
+        ('total_discount', 'Total Discount'),
+        ('total_amount', 'Total Amount Paid'),
+    ]
+
+    db_columns = [x[0] for x in query_features]
+    csv_columns = [x[1] for x in query_features]
+    sale_data = instructor_analytics.basic.sale_order_record_features(course_id, db_columns)
+    __, datarows = instructor_analytics.csvs.format_dictlist(sale_data, db_columns)
+    return instructor_analytics.csvs.create_csv_response("e-commerce_sale_order_records.csv", csv_columns, datarows)
+
+
+@require_course_permission(permissions.EDIT_INVOICE_VALIDATION)
+@require_POST
+def sale_validation(request, course_id):
+    """
+    This method either invalidate or re validate the sale against the invoice number depending upon the event type
+    """
+    try:
+        invoice_number = request.POST["invoice_number"]
+    except KeyError:
+        return HttpResponseBadRequest("Missing required invoice_number parameter")
+    try:
+        invoice_number = int(invoice_number)
+    except ValueError:
+        return HttpResponseBadRequest(
+            "invoice_number must be an integer, {value} provided".format(
+                value=invoice_number
+            )
+        )
+    try:
+        event_type = request.POST["event_type"]
+    except KeyError:
+        return HttpResponseBadRequest("Missing required event_type parameter")
+
+    course_id = CourseKey.from_string(course_id)
+    try:
+        obj_invoice = CourseRegistrationCodeInvoiceItem.objects.select_related('invoice').get(
+            invoice_id=invoice_number,
+            course_id=course_id
+        )
+        obj_invoice = obj_invoice.invoice
+    except CourseRegistrationCodeInvoiceItem.DoesNotExist:  # Check for old type invoices
+        return HttpResponseNotFound(_("Invoice number '{num}' does not exist.").format(num=invoice_number))
+
+    if event_type == "invalidate":
+        return invalidate_invoice(obj_invoice)
+    else:
+        return re_validate_invoice(obj_invoice)
+
+
+def invalidate_invoice(obj_invoice):
+    """
+    This method invalidate the sale against the invoice number
+    """
+    if not obj_invoice.is_valid:
+        return HttpResponseBadRequest(_("The sale associated with this invoice has already been invalidated."))
+    obj_invoice.is_valid = False
+    obj_invoice.save()
+    message = _('Invoice number {0} has been invalidated.').format(obj_invoice.id)
+    return JsonResponse({'message': message})
+
+
+def re_validate_invoice(obj_invoice):
+    """
+    This method re-validate the sale against the invoice number
+    """
+    if obj_invoice.is_valid:
+        return HttpResponseBadRequest(_("This invoice is already active."))
+
+    obj_invoice.is_valid = True
+    obj_invoice.save()
+    message = _('The registration codes for invoice {0} have been re-activated.').format(obj_invoice.id)
+    return JsonResponse({'message': message})
+
+
 @transaction.non_atomic_requests
 @ensure_csrf_cookie
 @cache_control(no_cache=True, no_store=True, must_revalidate=True)
@@ -1356,6 +1495,336 @@ def get_proctored_exam_results(request, course_id):
     success_status = SUCCESS_MESSAGE_TEMPLATE.format(report_type=report_type)
 
     return JsonResponse({"status": success_status})
+
+
+def save_registration_code(user, course_id, mode_slug, invoice=None, order=None, invoice_item=None):
+    """
+    recursive function that generate a new code every time and saves in the Course Registration Table
+    if validation check passes
+
+    Args:
+        user (User): The user creating the course registration codes.
+        course_id (str): The string representation of the course ID.
+        mode_slug (str): The Course Mode Slug associated with any enrollment made by these codes.
+        invoice (Invoice): (Optional) The associated invoice for this code.
+        order (Order): (Optional) The associated order for this code.
+        invoice_item (CourseRegistrationCodeInvoiceItem) : (Optional) The associated CourseRegistrationCodeInvoiceItem
+
+    Returns:
+        The newly created CourseRegistrationCode.
+
+    """
+    code = random_code_generator()
+
+    # check if the generated code is in the Coupon Table
+    matching_coupons = Coupon.objects.filter(code=code, is_active=True)
+    if matching_coupons:
+        return save_registration_code(
+            user, course_id, mode_slug, invoice=invoice, order=order, invoice_item=invoice_item
+        )
+
+    course_registration = CourseRegistrationCode(
+        code=code,
+        course_id=six.text_type(course_id),
+        created_by=user,
+        invoice=invoice,
+        order=order,
+        mode_slug=mode_slug,
+        invoice_item=invoice_item
+    )
+    try:
+        with transaction.atomic():
+            course_registration.save()
+        return course_registration
+    except IntegrityError:
+        return save_registration_code(
+            user, course_id, mode_slug, invoice=invoice, order=order, invoice_item=invoice_item
+        )
+
+
+def registration_codes_csv(file_name, codes_list, csv_type=None):
+    """
+    Respond with the csv headers and data rows
+    given a dict of codes list
+    :param file_name:
+    :param codes_list:
+    :param csv_type:
+    """
+    # csv headers
+    query_features = [
+        'code', 'redeem_code_url', 'course_id', 'company_name', 'created_by',
+        'redeemed_by', 'invoice_id', 'purchaser', 'customer_reference_number', 'internal_reference', 'is_valid'
+    ]
+
+    registration_codes = instructor_analytics.basic.course_registration_features(query_features, codes_list, csv_type)
+    header, data_rows = instructor_analytics.csvs.format_dictlist(registration_codes, query_features)
+    return instructor_analytics.csvs.create_csv_response(file_name, header, data_rows)
+
+
+def random_code_generator():
+    """
+    generate a random alphanumeric code of length defined in
+    REGISTRATION_CODE_LENGTH settings
+    """
+    code_length = getattr(settings, 'REGISTRATION_CODE_LENGTH', 8)
+    return generate_random_string(code_length)
+
+
+@ensure_csrf_cookie
+@cache_control(no_cache=True, no_store=True, must_revalidate=True)
+@require_course_permission(permissions.VIEW_COUPONS)
+@require_POST
+def get_registration_codes(request, course_id):
+    """
+    Respond with csv which contains a summary of all Registration Codes.
+    """
+    course_id = CourseKey.from_string(course_id)
+
+    #filter all the  course registration codes
+    registration_codes = CourseRegistrationCode.objects.filter(
+        course_id=course_id
+    ).order_by('invoice_item__invoice__company_name')
+
+    company_name = request.POST['download_company_name']
+    if company_name:
+        registration_codes = registration_codes.filter(invoice_item__invoice__company_name=company_name)
+
+    csv_type = 'download'
+    return registration_codes_csv("Registration_Codes.csv", registration_codes, csv_type)
+
+
+@ensure_csrf_cookie
+@cache_control(no_cache=True, no_store=True, must_revalidate=True)
+@require_sales_admin
+@require_POST
+def generate_registration_codes(request, course_id):
+    """
+    Respond with csv which contains a summary of all Generated Codes.
+    """
+    course_id = CourseKey.from_string(course_id)
+    invoice_copy = False
+
+    # covert the course registration code number into integer
+    try:
+        course_code_number = int(request.POST['total_registration_codes'])
+    except ValueError:
+        course_code_number = int(float(request.POST['total_registration_codes']))
+
+    company_name = request.POST['company_name']
+    company_contact_name = request.POST['company_contact_name']
+    company_contact_email = request.POST['company_contact_email']
+    unit_price = request.POST['unit_price']
+
+    try:
+        unit_price = (
+            decimal.Decimal(unit_price)
+        ).quantize(
+            decimal.Decimal('.01'),
+            rounding=decimal.ROUND_DOWN
+        )
+    except decimal.InvalidOperation:
+        return HttpResponse(
+            status=400,
+            content=_("Could not parse amount as a decimal")
+        )
+
+    recipient_name = request.POST['recipient_name']
+    recipient_email = request.POST['recipient_email']
+    address_line_1 = request.POST['address_line_1']
+    address_line_2 = request.POST['address_line_2']
+    address_line_3 = request.POST['address_line_3']
+    city = request.POST['city']
+    state = request.POST['state']
+    zip_code = request.POST['zip']
+    country = request.POST['country']
+    internal_reference = request.POST['internal_reference']
+    customer_reference_number = request.POST['customer_reference_number']
+    recipient_list = [recipient_email]
+    if request.POST.get('invoice', False):
+        recipient_list.append(request.user.email)
+        invoice_copy = True
+
+    sale_price = unit_price * course_code_number
+    set_user_preference(request.user, INVOICE_KEY, invoice_copy)
+    sale_invoice = Invoice.objects.create(
+        total_amount=sale_price,
+        company_name=company_name,
+        company_contact_email=company_contact_email,
+        company_contact_name=company_contact_name,
+        course_id=course_id,
+        recipient_name=recipient_name,
+        recipient_email=recipient_email,
+        address_line_1=address_line_1,
+        address_line_2=address_line_2,
+        address_line_3=address_line_3,
+        city=city,
+        state=state,
+        zip=zip_code,
+        country=country,
+        internal_reference=internal_reference,
+        customer_reference_number=customer_reference_number
+    )
+
+    invoice_item = CourseRegistrationCodeInvoiceItem.objects.create(
+        invoice=sale_invoice,
+        qty=course_code_number,
+        unit_price=unit_price,
+        course_id=course_id
+    )
+
+    course = get_course_by_id(course_id, depth=0)
+    paid_modes = CourseMode.paid_modes_for_course(course_id)
+
+    if len(paid_modes) != 1:
+        msg = (
+            "Generating Code Redeem Codes for Course '{course_id}', which must have a single paid course mode. "
+            "This is a configuration issue. Current course modes with payment options: {paid_modes}"
+        ).format(course_id=course_id, paid_modes=paid_modes)
+        log.error(msg)
+        return HttpResponse(
+            status=500,
+            content=_("Unable to generate redeem codes because of course misconfiguration.")
+        )
+
+    course_mode = paid_modes[0]
+    course_price = course_mode.min_price
+
+    registration_codes = []
+    for __ in range(course_code_number):
+        generated_registration_code = save_registration_code(
+            request.user, course_id, course_mode.slug, invoice=sale_invoice, order=None, invoice_item=invoice_item
+        )
+        registration_codes.append(generated_registration_code)
+
+    site_name = configuration_helpers.get_value('SITE_NAME', 'localhost')
+    quantity = course_code_number
+    discount = (float(quantity * course_price) - float(sale_price))
+    course_url = '{base_url}{course_about}'.format(
+        base_url=configuration_helpers.get_value('SITE_NAME', settings.SITE_NAME),
+        course_about=reverse('about_course', kwargs={'course_id': text_type(course_id)})
+    )
+    dashboard_url = '{base_url}{dashboard}'.format(
+        base_url=configuration_helpers.get_value('SITE_NAME', settings.SITE_NAME),
+        dashboard=reverse('dashboard')
+    )
+
+    from_address = configuration_helpers.get_value('email_from_address', settings.DEFAULT_FROM_EMAIL)
+    context = {
+        'invoice': sale_invoice,
+        'site_name': site_name,
+        'course': course,
+        'course_price': course_price,
+        'sub_total': course_price * quantity,
+        'discount': discount,
+        'sale_price': sale_price,
+        'quantity': quantity,
+        'registration_codes': registration_codes,
+        'currency_symbol': settings.PAID_COURSE_REGISTRATION_CURRENCY[1],
+        'course_url': course_url,
+        'platform_name': configuration_helpers.get_value('platform_name', settings.PLATFORM_NAME),
+        'dashboard_url': dashboard_url,
+        'contact_email': from_address,
+        'corp_address': configuration_helpers.get_value('invoice_corp_address', settings.INVOICE_CORP_ADDRESS),
+        'payment_instructions': configuration_helpers.get_value(
+            'invoice_payment_instructions',
+            settings. INVOICE_PAYMENT_INSTRUCTIONS,
+        ),
+        'date': time.strftime("%m/%d/%Y")
+    }
+    # composes registration codes invoice email
+    subject = 'Confirmation and Invoice for {course_name}'.format(course_name=course.display_name)
+    message = render_to_string('emails/registration_codes_sale_email.txt', context)
+
+    invoice_attachment = render_to_string('emails/registration_codes_sale_invoice_attachment.txt', context)
+
+    #send_mail(subject, message, from_address, recipient_list, fail_silently=False)
+    csv_file = StringIO()
+    csv_writer = csv.writer(csv_file)
+    for registration_code in registration_codes:
+        full_redeem_code_url = 'http://{base_url}{redeem_code_url}'.format(
+            base_url=configuration_helpers.get_value('SITE_NAME', settings.SITE_NAME),
+            redeem_code_url=reverse('register_code_redemption', kwargs={'registration_code': registration_code.code})
+        )
+        csv_writer.writerow([registration_code.code, full_redeem_code_url])
+    finance_email = configuration_helpers.get_value('finance_email', settings.FINANCE_EMAIL)
+    if finance_email:
+        # append the finance email into the recipient_list
+        recipient_list.append(finance_email)
+
+    # send a unique email for each recipient, don't put all email addresses in a single email
+    for recipient in recipient_list:
+        email = EmailMessage()
+        email.subject = subject
+        email.body = message
+        email.from_email = from_address
+        email.to = [recipient]
+        email.attach('RegistrationCodes.csv', csv_file.getvalue(), 'text/csv')
+        email.attach('Invoice.txt', invoice_attachment, 'text/plain')
+        email.send()
+
+    return registration_codes_csv("Registration_Codes.csv", registration_codes)
+
+
+@ensure_csrf_cookie
+@cache_control(no_cache=True, no_store=True, must_revalidate=True)
+@require_course_permission(permissions.VIEW_COUPONS)
+@require_POST
+def active_registration_codes(request, course_id):
+    """
+    Respond with csv which contains a summary of all Active Registration Codes.
+    """
+    course_id = CourseKey.from_string(course_id)
+
+    # find all the registration codes in this course
+    registration_codes_list = CourseRegistrationCode.objects.filter(
+        course_id=course_id
+    ).order_by('invoice_item__invoice__company_name')
+
+    company_name = request.POST['active_company_name']
+    if company_name:
+        registration_codes_list = registration_codes_list.filter(invoice_item__invoice__company_name=company_name)
+    # find the redeemed registration codes if any exist in the db
+    code_redemption_set = RegistrationCodeRedemption.objects.select_related(
+        'registration_code', 'registration_code__invoice_item__invoice'
+    ).filter(registration_code__course_id=course_id)
+    if code_redemption_set.exists():
+        redeemed_registration_codes = [code.registration_code.code for code in code_redemption_set]
+        # exclude the redeemed registration codes from the registration codes list and you will get
+        # all the registration codes that are active
+        registration_codes_list = registration_codes_list.exclude(code__in=redeemed_registration_codes)
+
+    return registration_codes_csv("Active_Registration_Codes.csv", registration_codes_list)
+
+
+@ensure_csrf_cookie
+@cache_control(no_cache=True, no_store=True, must_revalidate=True)
+@require_course_permission(permissions.VIEW_COUPONS)
+@require_POST
+def spent_registration_codes(request, course_id):
+    """
+    Respond with csv which contains a summary of all Spent(used) Registration Codes.
+    """
+    course_id = CourseKey.from_string(course_id)
+
+    # find the redeemed registration codes if any exist in the db
+    code_redemption_set = RegistrationCodeRedemption.objects.select_related('registration_code').filter(
+        registration_code__course_id=course_id
+    )
+    spent_codes_list = []
+    if code_redemption_set.exists():
+        redeemed_registration_codes = [code.registration_code.code for code in code_redemption_set]
+        # filter the Registration Codes by course id and the redeemed codes and
+        # you will get a list of all the spent(Redeemed) Registration Codes
+        spent_codes_list = CourseRegistrationCode.objects.filter(
+            course_id=course_id, code__in=redeemed_registration_codes
+        ).order_by('invoice_item__invoice__company_name').select_related('invoice_item__invoice')
+
+        company_name = request.POST['spent_company_name']
+        if company_name:
+            spent_codes_list = spent_codes_list.filter(invoice_item__invoice__company_name=company_name)
+
+    csv_type = 'spent'
+    return registration_codes_csv("Spent_Registration_Codes.csv", spent_codes_list, csv_type)
 
 
 @transaction.non_atomic_requests
@@ -3059,3 +3528,26 @@ def _get_certificate_for_user(course_key, student):
         )
 
     return certificate
+
+
+def _return_csv_response(filename, header, rows):
+    """Returns a CSV http response for the given header and rows (excel/utf-8)."""
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename={0}'.format(filename)
+    writer = csv.writer(response, dialect='excel', quotechar='"', quoting=csv.QUOTE_ALL)
+    # In practice, there should not be non-ascii data in this query,
+    # but trying to do the right thing anyway.
+    writer.writerow([s for s in header])
+    for row in rows:
+        writer.writerow([s for s in row])
+    return response
+
+
+@ensure_csrf_cookie
+@require_course_permission(permissions.VIEW_DASHBOARD)
+def get_rapid_response_report(request, course_id, run_id):  # pylint: disable=unused-argument
+    """
+    Return csv file corresponding to given run_id
+    """
+    header = ['Date', 'Submitted Answer', 'Username', 'User Email', 'Correct']
+    return _return_csv_response('rapid_response_submissions.csv', header, get_run_submission_data(run_id))
