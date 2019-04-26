@@ -420,6 +420,9 @@ FEATURES = {
 
     # Whether to display the account deletion section the account settings page
     'ENABLE_ACCOUNT_DELETION': True,
+
+    # Set this to manage the default value across all courses in a given deployment
+    'COURSE_DEFAULT_INVITE_ONLY': False,
 }
 
 # Settings for the course reviews tool template and identification key, set either to None to disable course reviews
