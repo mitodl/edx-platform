@@ -20,6 +20,7 @@ from django.core.exceptions import PermissionDenied
 from django.core.paginator import EmptyPage, PageNotAnInteger, Paginator
 from django.db import IntegrityError
 from django.http import Http404, HttpResponse
+from django.urls import reverse
 from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.utils.html import escape
@@ -28,6 +29,7 @@ from django.views.decorators.cache import cache_control
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import condition
 from django.views.generic.base import TemplateView
+from django.shortcuts import redirect
 from opaque_keys.edx.keys import CourseKey
 from path import Path as path
 from six import text_type
@@ -275,8 +277,9 @@ class Users(SysadminDashboardView):
 
         if not request.user.is_staff:
             raise Http404
+        if not request.user.is_superuser:
+            return redirect(reverse('gitlogs'))
         self.make_common_context()
-
         context = {
             'datatable': self.datatable,
             'msg': self.msg,
@@ -654,6 +657,7 @@ class GitLogs(TemplateView):
         mdb.disconnect()
         context = {
             'logs': logs,
+            'is_superuser': request.user.is_superuser,
             'course_id': text_type(course_id) if course_id else None,
             'error_msg': error_msg,
             'page_size': page_size
