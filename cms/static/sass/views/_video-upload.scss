@@ -342,6 +342,78 @@
       }
     }
   }
+  
+  .hls-upload-form {
+    $title-color: #6d7278;
+    margin-top: 10px;
+    
+    .hls-upload-container {
+
+      .title {
+        padding: 0px 0px 10px 0px;
+        color: $title-color;
+        margin: $baseline ($baseline*1.5) $baseline ($baseline*1.5);
+        border-bottom: 1px solid #8a8b8c; 
+      }
+
+      .list-input, div.error {
+        padding: 5px 30px;
+      }
+
+      label, input, textarea {
+        display: block;
+      }
+
+      .field-group {
+        position: relative;
+        @include clearfix();
+
+        .field {
+          @include float(left);
+          width: flex-grid(3, 9);
+        }
+      }
+
+      label {
+        @include transition(color $tmg-f2 ease-in-out 0s);
+
+        @extend %t-copy-sub1;
+        @extend %t-strong;
+
+        color: $title-color;
+        font-size: 18px;
+        font-weight: bold;
+
+        margin: 0 0 ($baseline/4) 0;
+
+        &.is-focused {
+          color: theme-color("primary");
+        }
+      }
+
+      input {
+        border-radius: 0px;
+        background-color: white;
+        background-image: unset;
+      }
+
+      .btn-submit {
+        @extend %btn-primary-blue;
+
+        padding: 5px 17px;
+        font-size: 12px;
+        text-transform: uppercase;
+        position: absolute;
+        right: 0px;
+        bottom: 0px;
+      } 
+
+      .error {
+        color: $color-error;
+        margin-bottom: 1rem;
+      }
+    }
+  }
 
   .active-video-upload-container {
     margin-bottom: ($baseline*2);
