@@ -10,6 +10,8 @@
     </div>
     <input type="file" class="sr js-file-input" name="file" multiple>
 </form>
+<div class="hls-upload-form form-create">
+</div>
 <section class="active-video-upload-container">
     <h3 class="sr"><%= gettext("Active Uploads") %></h3>
     <ul class="active-video-upload-list"></ul>

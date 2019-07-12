@@ -1,0 +1,23 @@
+<h2 class="title"><%= formTitle %></h2>
+<div class="content">
+  <% if (isHlsPlaybackEnabled) { %>
+    <ol class="list-input">
+      <li class="field-group">
+        <div class="field">
+          <label for="filename" class="field-label"><%= filenameText %></label>
+          <input type="text" id="filename" name="filename" class="field-input input-text" required>
+        </div>
+        <div class="field">
+          <label for="hls_url" class="field-label"><%= urlText %></label>
+          <input type="text" id="hls_url" name="hls_url" class="field-input input-text" required>
+        </div>
+        <button type="submit" class="btn-submit"><%= submitText %></button>
+      </li>
+    </ol>
+  <% } %>
+  <div class="error">
+    <% if (isHlsPlaybackEnabled === false) { %>
+      <%= hlsPlaybackError %>
+    <% } %>
+  </div>
+</div>
