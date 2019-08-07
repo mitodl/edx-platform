@@ -10,7 +10,6 @@ from pytz import UTC
 from uuid import uuid4
 
 import rfc6266_parser
-import m3u8
 from boto import s3
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
@@ -42,7 +41,7 @@ from contentstore.models import VideoUploadConfig
 from contentstore.utils import reverse_course_url
 from contentstore.video_utils import validate_video_image
 from edxmako.shortcuts import render_to_response
-from openedx.core.djangoapps.video_config.models import VideoTranscriptEnabledFlag, HLSPlaybackEnabledFlag
+from openedx.core.djangoapps.video_config.models import VideoTranscriptEnabledFlag
 from openedx.core.djangoapps.video_pipeline.config.waffle import waffle_flags, DEPRECATE_YOUTUBE
 from openedx.core.djangoapps.waffle_utils import CourseWaffleFlag, WaffleSwitchNamespace, WaffleFlagNamespace
 from util.json_request import JsonResponse, expect_json
@@ -197,8 +196,6 @@ def videos_handler(request, course_key_string, edx_video_id=None):
             return send_video_status_update(request.json)
         elif _is_pagination_context_update_request(request):
             return _update_pagination_context(request)
-        elif _is_hls_link_request(request):
-            return hls_post(course, request)
 
         return videos_post(course, request)
 
@@ -625,8 +622,7 @@ def videos_index_html(course, pagination_conf=None):
             'transcript_delete_handler_url': reverse_course_url('transcript_delete_handler', unicode(course.id)),
             'trancript_download_file_format': Transcript.SRT
         },
-        'pagination_context': pagination_context,
-        'hls_playback_enabled': HLSPlaybackEnabledFlag.feature_enabled(course.id)
+        'pagination_context': pagination_context
     }
 
     if is_video_transcript_enabled:
@@ -762,41 +758,6 @@ def videos_post(course, request):
     return JsonResponse({'files': resp_files}, status=200)
 
 
-def hls_post(course, request):
-    """
-    Create a video for the course using file name and HLS URL supplied in request
-    """
-    file_name = request.json.get('filename')
-    hls_url = request.json.get('hls_url')
-
-    if not file_name:
-        return JsonResponse({'error': 'Request does not contain file name'}, status=400)
-
-    if not hls_url:
-        return JsonResponse({'error': 'Request does not contain HLS URL'}, status=400)
-
-    if not _is_valid_hls_link(hls_url):
-        return JsonResponse({'error': 'Request does not contain a valid HLS URL'}, status=400)
-
-    edx_video_id = unicode(uuid4())
-    create_video({
-        'edx_video_id': edx_video_id,
-        'status': 'file_complete',
-        'client_video_id': file_name,
-        'duration': 0,
-        'encoded_videos': [{'profile': 'hls', 'url': hls_url, 'bitrate': 0, 'file_size': 0 }], 
-        'courses': [unicode(course.id)]
-    })
-
-    return JsonResponse({
-        'files': [{
-                'edx_video_id': edx_video_id,
-                'upload_url': hls_url,
-                'file_name': file_name
-            }]
-    }, status=200)
-
-
 def storage_service_bucket():
     """
     Returns an S3 bucket for video uploads.
@@ -865,23 +826,6 @@ def _is_pagination_context_update_request(request):
     """
     return request.POST.get('id', '') == "videos_per_page"
 
-
-def _is_hls_link_request(request):
-    """
-    Checks if request contains `filename` and `hls_url`
-    """
-    return request.json.get('filename', False) and request.json.get('hls_url')
-
-
-def _is_valid_hls_link(hls_url):
-    """
-    Checks if a given URL points to a valid HLS manifest
-    """
-    try:
-        manifest = m3u8.load(hls_url)
-        return bool(len(manifest.media) or len(manifest.playlists))
-    except:
-        return False
 
 def _update_pagination_context(request):
     """

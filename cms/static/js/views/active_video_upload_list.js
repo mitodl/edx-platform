@@ -6,13 +6,12 @@ define([
     'js/views/baseview',
     'js/views/active_video_upload',
     'js/views/course_video_settings',
-    'js/views/hls_video_upload',
     'edx-ui-toolkit/js/utils/html-utils',
     'edx-ui-toolkit/js/utils/string-utils',
     'text!templates/active-video-upload-list.underscore',
     'jquery.fileupload'
 ],
-    function($, _, Backbone, ActiveVideoUpload, BaseView, ActiveVideoUploadView, CourseVideoSettingsView, HLSVideoUploadView,
+    function($, _, Backbone, ActiveVideoUpload, BaseView, ActiveVideoUploadView, CourseVideoSettingsView,
              HtmlUtils, StringUtils, activeVideoUploadListTemplate) {
         'use strict';
         var ActiveVideoUploadListView,
@@ -48,7 +47,6 @@ define([
                 this.isVideoTranscriptEnabled = options.isVideoTranscriptEnabled;
                 this.videoSupportedFileFormats = options.videoSupportedFileFormats;
                 this.videoUploadMaxFileSizeInGB = options.videoUploadMaxFileSizeInGB;
-                this.isHlsPlaybackEnabled = options.isHlsPlaybackEnabled;
                 this.onFileUploadDone = options.onFileUploadDone;
                 if (options.courseVideoSettingsButton) {
                     options.courseVideoSettingsButton.click(this.showCourseVideoSettingsView.bind(this));
@@ -137,12 +135,6 @@ define([
                 $(window).on('drop', preventDefault);
                 $(window).on('beforeunload', this.onBeforeUnload.bind(this));
                 $(window).on('unload', this.onUnload.bind(this));
-
-                this.$('.hls-upload-form').html(new HLSVideoUploadView({
-                    onFileUploadDone: this.onFileUploadDone,
-                    postUrl: this.postUrl,
-                    isHlsPlaybackEnabled: this.isHlsPlaybackEnabled
-                }).render().$el);
                 return this;
             },
 
