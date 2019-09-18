@@ -149,6 +149,10 @@ from six import string_types
         ## Shib courses need the enrollment button to be displayed even when can_enroll is False,
         ## because AnonymousUsers cause can_enroll for shib courses to be False, but we need them to be able to click
         ## so that they can register and become a real user that can enroll.
+        % elif not is_shib_course and invitation_only:
+          <span class="register disabled">${_("Enrollment in this course is by invitation only")}</span>
+        ## Non-shib courses respect the value of invitation_only and so do not show the enroll button
+        ## if the course is set to invitation only
         % elif not is_shib_course and not can_enroll:
           <span class="register disabled">${_("Enrollment is Closed")}</span>
         %elif can_add_course_to_cart:
