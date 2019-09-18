@@ -5,6 +5,7 @@ View logic for handling course messages.
 from datetime import datetime
 
 from babel.dates import format_date, format_timedelta
+from django.conf import settings
 from django.contrib import auth
 from django.template.loader import render_to_string
 from django.utils.http import urlquote_plus
@@ -125,18 +126,32 @@ def _register_course_home_messages(request, course, user_access, course_start_da
             title=Text(_('You must be enrolled in the course to see course content.'))
         )
     if not user_access['is_anonymous'] and not user_access['is_staff'] and not user_access['is_enrolled']:
-        CourseHomeMessages.register_info_message(
-            request,
-            Text(_(
-                '{open_enroll_link}Enroll now{close_enroll_link} to access the full course.'
-            )).format(
-                open_enroll_link=HTML('<button class="enroll-btn btn-link">'),
-                close_enroll_link=HTML('</button>')
-            ),
-            title=Text(_('Welcome to {course_display_name}')).format(
-                course_display_name=course.display_name
+        if not course.invitation_only:
+            CourseHomeMessages.register_info_message(
+                request,
+                Text(_(
+                    '{open_enroll_link}Enroll now{close_enroll_link} to access the full course.'
+                )).format(
+                    open_enroll_link=HTML('<button class="enroll-btn btn-link">'),
+                    close_enroll_link=HTML('</button>')
+                ),
+                title=Text(_('Welcome to {course_display_name}')).format(
+                    course_display_name=course.display_name
+                )
             )
-        )
+        else:
+            CourseHomeMessages.register_info_message(
+                request,
+                Text(_(
+                    '{open_register_disabled}Enrollment in this course is by invitation only{close_register_disabled}'
+                )).format(
+                    open_register_disabled=HTML('<span class="register disabled">'),
+                    close_register_disabled=HTML('</span>')
+                ),
+                title=Text(_('Welcome to {course_display_name}')).format(
+                    course_display_name=course.display_name
+                )
+            )
 
 
 def _register_course_goal_message(request, course):
