@@ -37,6 +37,7 @@ git+https://github.com/edx/RecommenderXBlock.git@1.4.0#egg=recommender-xblock==1
 git+https://github.com/edx-solutions/xblock-drag-and-drop-v2@v2.1.6#egg=xblock-drag-and-drop-v2==2.1.6
 -e git+https://github.com/edx-solutions/xblock-google-drive.git@138e6fa0bf3a2013e904a085b9fed77dab7f3f21#egg=xblock-google-drive
 git+https://github.com/open-craft/xblock-poll@add89e14558c30f3c8dc7431e5cd6536fff6d941#egg=xblock-poll==1.5.1
+git+https://github.com/mitodl/edx-val@1.1.25#egg=edxval==1.1.25
 -e common/lib/xmodule
 amqp==1.4.9               # via kombu
 analytics-python==1.2.9
@@ -129,7 +130,6 @@ edx-rest-api-client==1.9.2
 edx-search==1.2.1
 edx-submissions==2.0.12
 edx-user-state-client==1.0.4
-edxval==1.1.25
 elasticsearch==1.9.0      # via edx-search
 enum34==1.1.6
 event-tracking==0.2.7
