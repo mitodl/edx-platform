@@ -19,8 +19,7 @@ define([
         videoTranscriptSettings,
         isVideoTranscriptEnabled,
         videoImageSettings,
-        transcriptAvailableLanguages,
-        isHlsPlaybackEnabled
+        transcriptAvailableLanguages
     ) {
         var activeView = new ActiveVideoUploadListView({
                 postUrl: videoHandlerUrl,
@@ -33,7 +32,6 @@ define([
                 transcriptOrganizationCredentials: transcriptOrganizationCredentials,
                 videoTranscriptSettings: videoTranscriptSettings,
                 isVideoTranscriptEnabled: isVideoTranscriptEnabled,
-                isHlsPlaybackEnabled: isHlsPlaybackEnabled,
                 onFileUploadDone: function(activeVideos) {
                     $.ajax({
                         url: videoHandlerUrl,

@@ -16,7 +16,7 @@
 <%namespace name='static' file='static_content.html'/>
 
 <%block name="header_extras">
-% for template_name in ["active-video-upload", "previous-video-upload-list", "hls-video-upload"]:
+% for template_name in ["active-video-upload", "previous-video-upload-list"]:
 <script type="text/template" id="${template_name}-tpl">
     <%static:include path="js/${template_name}.underscore" />
 </script>
@@ -43,8 +43,7 @@
             ${video_transcript_settings | n, dump_js_escaped_json},
             ${is_video_transcript_enabled | n, dump_js_escaped_json},
             ${video_image_settings | n, dump_js_escaped_json},
-            ${transcript_available_languages | n, dump_js_escaped_json},
-            ${hls_playback_enabled | n, dump_js_escaped_json}
+            ${transcript_available_languages | n, dump_js_escaped_json}
         );
     });
 </%block>
