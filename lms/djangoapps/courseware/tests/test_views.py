@@ -619,7 +619,7 @@ class ViewsTestCase(ModuleStoreTestCase):
 
         url = reverse('submission_history', kwargs={
             'course_id': unicode(self.course_key),
-            'student_username': 'dummy',
+            'student_username_or_email': 'dummy',
             'location': unicode(self.problem.location),
         })
         response = self.client.get(url)
@@ -635,7 +635,7 @@ class ViewsTestCase(ModuleStoreTestCase):
         # try it with an existing user and a malicious location
         url = reverse('submission_history', kwargs={
             'course_id': unicode(self.course_key),
-            'student_username': 'dummy',
+            'student_username_or_email': 'dummy',
             'location': '<script>alert("hello");</script>'
         })
         response = self.client.get(url)
@@ -644,7 +644,7 @@ class ViewsTestCase(ModuleStoreTestCase):
         # try it with a malicious user and a non-existent location
         url = reverse('submission_history', kwargs={
             'course_id': unicode(self.course_key),
-            'student_username': '<script>alert("hello");</script>',
+            'student_username_or_email': '<script>alert("hello");</script>',
             'location': 'dummy'
         })
         response = self.client.get(url)
@@ -677,7 +677,7 @@ class ViewsTestCase(ModuleStoreTestCase):
 
         url = reverse('submission_history', kwargs={
             'course_id': unicode(self.course_key),
-            'student_username': admin.username,
+            'student_username_or_email': admin.email,
             'location': unicode(usage_key),
         })
         response = self.client.get(url)
@@ -718,7 +718,7 @@ class ViewsTestCase(ModuleStoreTestCase):
                 )
                 url = reverse('submission_history', kwargs={
                     'course_id': unicode(course_key),
-                    'student_username': admin.username,
+                    'student_username_or_email': admin.username,
                     'location': unicode(usage_key),
                 })
                 response = client.get(url)
