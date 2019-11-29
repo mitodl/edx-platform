@@ -228,7 +228,7 @@ def get_valid_student_with_email(identifier):
     return email, user
 
 
-def ccx_students_enrolling_center(action, identifiers, email_students, course_key, email_params, coach):
+def ccx_students_enrolling_center(request, action, identifiers, email_students, course_key, email_params, coach):
     """
     Function to enroll or unenroll/revoke students.
 
@@ -268,7 +268,7 @@ def ccx_students_enrolling_center(action, identifiers, email_students, course_ke
                 log.info("%s", error)
                 errors.append(error)
                 break
-            enroll_email(course_key, email, auto_enroll=True, email_students=email_students, email_params=email_params)
+            enroll_email(request, course_key, email, auto_enroll=True, email_students=email_students, email_params=email_params)
     elif action == 'Unenroll' or action == 'revoke':
         for identifier in identifiers:
             try:
@@ -277,7 +277,7 @@ def ccx_students_enrolling_center(action, identifiers, email_students, course_ke
                 log.info("%s", exp)
                 errors.append("{0}".format(exp))
                 continue
-            unenroll_email(course_key, email, email_students=email_students, email_params=email_params)
+            unenroll_email(request, course_key, email, email_students=email_students, email_params=email_params)
     return errors
 
 
@@ -320,7 +320,7 @@ def is_email(identifier):
     return True
 
 
-def add_master_course_staff_to_ccx(master_course, ccx_key, display_name, send_email=True):
+def add_master_course_staff_to_ccx(request, master_course, ccx_key, display_name, send_email=True):
     """
     Add staff and instructor roles on ccx to all the staff and instructors members of master course.
 
@@ -344,6 +344,7 @@ def add_master_course_staff_to_ccx(master_course, ccx_key, display_name, send_em
                 try:
                     # Enroll the staff in the ccx
                     enroll_email(
+                        request=request,
                         course_id=ccx_key,
                         student_email=staff.email,
                         auto_enroll=True,
@@ -369,6 +370,7 @@ def add_master_course_staff_to_ccx(master_course, ccx_key, display_name, send_em
                 try:
                     # Enroll the instructor in the ccx
                     enroll_email(
+                        request=request,
                         course_id=ccx_key,
                         student_email=instructor.email,
                         auto_enroll=True,
@@ -389,7 +391,7 @@ def add_master_course_staff_to_ccx(master_course, ccx_key, display_name, send_em
                     continue
 
 
-def remove_master_course_staff_from_ccx(master_course, ccx_key, display_name, send_email=True):
+def remove_master_course_staff_from_ccx(request, master_course, ccx_key, display_name, send_email=True):
     """
     Remove staff and instructor roles on ccx to all the staff and instructors members of master course.
 
@@ -414,6 +416,7 @@ def remove_master_course_staff_from_ccx(master_course, ccx_key, display_name, se
 
                 # Unenroll the staff on ccx.
                 unenroll_email(
+                    request=request,
                     course_id=ccx_key,
                     student_email=staff.email,
                     email_students=send_email,
@@ -427,6 +430,7 @@ def remove_master_course_staff_from_ccx(master_course, ccx_key, display_name, se
 
                 # Unenroll the instructor on ccx.
                 unenroll_email(
+                    request=request,
                     course_id=ccx_key,
                     student_email=instructor.email,
                     email_students=send_email,

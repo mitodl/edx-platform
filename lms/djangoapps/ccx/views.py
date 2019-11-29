@@ -223,6 +223,7 @@ def create_ccx(request, course, ccx=None):
     # Enroll the coach in the course
     email_params = get_email_params(course, auto_enroll=True, course_key=ccx_id, display_name=ccx.display_name)
     enroll_email(
+        request=request,
         course_id=ccx_id,
         student_email=request.user.email,
         auto_enroll=True,
@@ -231,7 +232,7 @@ def create_ccx(request, course, ccx=None):
     )
 
     assign_staff_role_to_ccx(ccx_id, request.user, course.id)
-    add_master_course_staff_to_ccx(course, ccx_id, ccx.display_name)
+    add_master_course_staff_to_ccx(request, course, ccx_id, ccx.display_name)
 
     # using CCX object as sender here.
     responses = SignalHandler.course_published.send(
@@ -473,7 +474,7 @@ def ccx_students_management(request, course, ccx=None):
     course_key = CCXLocator.from_course_locator(course.id, unicode(ccx.id))
     email_params = get_email_params(course, auto_enroll=True, course_key=course_key, display_name=ccx.display_name)
 
-    errors = ccx_students_enrolling_center(action, identifiers, email_students, course_key, email_params, ccx.coach)
+    errors = ccx_students_enrolling_center(request, action, identifiers, email_students, course_key, email_params, ccx.coach)
 
     for error_message in errors:
         messages.error(request, error_message)

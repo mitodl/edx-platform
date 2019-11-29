@@ -35,6 +35,7 @@ def add_master_course_staff_to_ccx_for_existing_ccx(apps, schema_editor):
         try:
             course = get_course_by_id(ccx.course_id)
             add_master_course_staff_to_ccx(
+                request=None,
                 course,
                 ccx_locator,
                 ccx.display_name,
@@ -67,6 +68,7 @@ def remove_master_course_staff_from_ccx_for_existing_ccx(apps, schema_editor):
         try:
             course = get_course_by_id(ccx.course_id)
             remove_master_course_staff_from_ccx(
+                request=None,
                 course,
                 ccx_locator,
                 ccx.display_name,
@@ -85,7 +87,7 @@ class Migration(migrations.Migration):
         ('ccx', '0001_initial'),
         ('ccx', '0002_customcourseforedx_structure_json'),
         ('course_overviews','0010_auto_20160329_2317'), # because we use course overview and are in the same release as that table is modified
-        ('verified_track_content','0001_initial'), # because we use enrollement code and are in the same release as an enrollement related table is created 
+        ('verified_track_content','0001_initial'), # because we use enrollement code and are in the same release as an enrollement related table is created
     ]
 
     operations = [

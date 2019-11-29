@@ -83,10 +83,10 @@ def run_main_task(entry_id, task_fcn, action_name):
 
     # Get the InstructorTask to be updated. If this fails then let the exception return to Celery.
     # There's no point in catching it here.
-    with outer_atomic():
-        entry = InstructorTask.objects.get(pk=entry_id)
-        entry.task_state = PROGRESS
-        entry.save_now()
+    # with outer_atomic():
+    entry = InstructorTask.objects.get(pk=entry_id)
+    entry.task_state = PROGRESS
+    entry.save_now()
 
     # Get inputs to use in this task from the entry
     task_id = entry.task_id

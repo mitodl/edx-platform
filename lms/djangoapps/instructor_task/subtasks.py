@@ -92,14 +92,17 @@ def _generate_items_for_subtask(
     items_for_task = []
 
     with track_memory_usage('course_email.subtask_generation.memory', course_id):
-        for queryset in item_querysets:
-            for item in queryset.values(*all_item_fields).iterator():
-                if len(items_for_task) == items_per_task and num_subtasks < total_num_subtasks - 1:
-                    yield items_for_task
-                    num_items_queued += items_per_task
-                    items_for_task = []
-                    num_subtasks += 1
-                items_for_task.append(item)
+        try:
+            for queryset in item_querysets:
+                for item in queryset.values(*all_item_fields).iterator():
+                    if len(items_for_task) == items_per_task and num_subtasks < total_num_subtasks - 1:
+                        yield items_for_task
+                        num_items_queued += items_per_task
+                        items_for_task = []
+                        num_subtasks += 1
+                    items_for_task.append(item)
+        except AttributeError:
+            items_for_task.append({"email": item_querysets[0]})
 
         # yield remainder items for task, if any
         if items_for_task:
@@ -309,8 +312,8 @@ def queue_subtasks_for_query(
         total_num_items,
     )
     # Make sure this is committed to database before handing off subtasks to celery.
-    with outer_atomic():
-        progress = initialize_subtask_info(entry, action_name, total_num_items, subtask_id_list)
+    # with outer_atomic():
+    progress = initialize_subtask_info(entry, action_name, total_num_items, subtask_id_list)
 
     # Construct a generator that will return the recipients to use for each subtask.
     # Pass in the desired fields to fetch for each recipient.

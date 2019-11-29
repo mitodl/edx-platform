@@ -175,20 +175,31 @@ def perform_delegate_email_batches(entry_id, course_id, task_input, action_name)
     targets = email_obj.targets.all()
     global_email_context = _get_course_email_context(course)
 
-    recipient_qsets = [
-        target.get_users(course_id, user_id)
-        for target in targets
-    ]
-    combined_set = User.objects.none()
-    for qset in recipient_qsets:
-        combined_set |= qset
-    combined_set = combined_set.distinct()
-    recipient_fields = ['profile__name', 'email']
+    if targets:
+        recipient_qsets = [
+            target.get_users(course_id, user_id)
+            for target in targets
+        ]
+    else:
+        recipient_qsets = str(email_obj.to_option)  # unicode to string
+    try:
+        combined_set = User.objects.none()
+        for qset in recipient_qsets:
+            combined_set |= qset
+        combined_set = combined_set.distinct()
+        recipient_fields = ['profile__name', 'email']
+    except:
+        combined_set = recipient_qsets
+        recipient_fields = ['email']
+
 
     log.info(u"Task %s: Preparing to queue subtasks for sending emails for course %s, email %s",
              task_id, course_id, email_id)
 
-    total_recipients = combined_set.count()
+    try:
+        total_recipients = combined_set.count()
+    except Exception as e:
+        total_recipients = 1
 
     routing_key = settings.BULK_EMAIL_ROUTING_KEY
     # if there are few enough emails, send them through a different queue
@@ -339,16 +350,23 @@ def _filter_optouts_from_recipients(to_list, course_id):
     Returns the filtered recipient list, as well as the number of optouts
     removed from the list.
     """
-    optouts = Optout.objects.filter(
-        course_id=course_id,
-        user__in=[i['pk'] for i in to_list]
-    ).values_list('user__email', flat=True)
-    optouts = set(optouts)
-    # Only count the num_optout for the first time the optouts are calculated.
-    # We assume that the number will not change on retries, and so we don't need
-    # to calculate it each time.
-    num_optout = len(optouts)
-    to_list = [recipient for recipient in to_list if recipient['email'] not in optouts]
+    try:
+        optouts = Optout.objects.filter(
+            course_id=course_id,
+            user__in=[i['pk'] for i in to_list]
+        ).values_list('user__email', flat=True)
+        optouts = set(optouts)
+        # Only count the num_optout for the first time the optouts are calculated.
+        # We assume that the number will not change on retries, and so we don't need
+        # to calculate it each time.
+        num_optout = len(optouts)
+        to_list = [recipient for recipient in to_list if recipient['email'] not in optouts]
+    except KeyError:
+        user_record = to_list[0]
+        user_record["pk"] = 0
+        user_record["profile__name"] = user_record['email'].split("@")[0]
+        to_list = [user_record]
+        num_optout = len(to_list)
     return to_list, num_optout
 
 
@@ -498,6 +516,8 @@ def _send_course_email(entry_id, email_id, to_list, global_email_context, subtas
         from_addr = course_email.from_addr if course_email.from_addr else \
             _get_source_address(course_email.course_id, course_title, course_language)
 
+    from_addr = "{} course team <{}>".format(course_title, from_addr)
+
     # use the CourseEmailTemplate that was associated with the CourseEmail
     course_email_template = course_email.get_template()
     try:
@@ -516,6 +536,7 @@ def _send_course_email(entry_id, email_id, to_list, global_email_context, subtas
             # yet been emailed, but not send to those who have already been sent to.
             recipient_num += 1
             current_recipient = to_list[-1]
+
             email = current_recipient['email']
             if _has_non_ascii_characters(email):
                 to_list.pop()
@@ -531,8 +552,14 @@ def _send_course_email(entry_id, email_id, to_list, global_email_context, subtas
                 continue
 
             email_context['email'] = email
-            email_context['name'] = current_recipient['profile__name']
-            email_context['user_id'] = current_recipient['pk']
+            try:
+                email_context['name'] = current_recipient['profile__name']
+            except KeyError:
+                email_context['name'] = email.split("@")[0]
+            try:
+                email_context['user_id'] = current_recipient['pk']
+            except KeyError:
+                email_context['user_id'] = 0
             email_context['course_id'] = course_email.course_id
 
             # Construct message content using templates and context:

@@ -8,6 +8,7 @@ import json
 import logging
 from datetime import datetime
 
+
 import pytz
 from django.conf import settings
 from django.contrib.auth.models import User
@@ -18,6 +19,7 @@ from django.utils.translation import override as override_language
 from edx_ace import ace
 from edx_ace.recipient import Recipient
 from six import text_type
+from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseForbidden, HttpResponseNotFound
 
 from course_modes.models import CourseMode
 from courseware.models import StudentModule
@@ -53,6 +55,11 @@ from track.event_transaction_utils import (
 )
 from xmodule.modulestore.django import modulestore
 from xmodule.modulestore.exceptions import ItemNotFoundError
+from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
+from opaque_keys.edx.keys import CourseKey, UsageKey
+from bulk_email.models import BulkEmailFlag, CourseEmail
+from util.json_request import JsonResponse, JsonResponseBadRequest
+from lms.djangoapps.instructor_task.api import submit_bulk_course_email
 
 log = logging.getLogger(__name__)
 
@@ -122,7 +129,7 @@ def get_user_email_language(user):
     return UserPreference.get_value(user, LANGUAGE_KEY)
 
 
-def enroll_email(course_id, student_email, auto_enroll=False, email_students=False, email_params=None, language=None):
+def enroll_email(request, course_id, student_email, auto_enroll=False, email_students=False, email_params=None, language=None):
     """
     Enroll a student by email.
 
@@ -160,7 +167,7 @@ def enroll_email(course_id, student_email, auto_enroll=False, email_students=Fal
             email_params['message_type'] = 'enrolled_enroll'
             email_params['email_address'] = student_email
             email_params['full_name'] = previous_state.full_name
-            send_mail_to_student(student_email, email_params, language=language)
+            send_mail_to_student(request, student_email, email_params, language=language)
 
     elif not is_email_retired(student_email):
         cea, _ = CourseEnrollmentAllowed.objects.get_or_create(course_id=course_id, email=student_email)
@@ -169,14 +176,13 @@ def enroll_email(course_id, student_email, auto_enroll=False, email_students=Fal
         if email_students:
             email_params['message_type'] = 'allowed_enroll'
             email_params['email_address'] = student_email
-            send_mail_to_student(student_email, email_params, language=language)
+            send_mail_to_student(request, student_email, email_params, language=language)
 
     after_state = EmailEnrollmentState(course_id, student_email)
-
     return previous_state, after_state, enrollment_obj
 
 
-def unenroll_email(course_id, student_email, email_students=False, email_params=None, language=None):
+def unenroll_email(request, course_id, student_email, email_students=False, email_params=None, language=None):
     """
     Unenroll a student by email.
 
@@ -195,7 +201,7 @@ def unenroll_email(course_id, student_email, email_students=False, email_params=
             email_params['message_type'] = 'enrolled_unenroll'
             email_params['email_address'] = student_email
             email_params['full_name'] = previous_state.full_name
-            send_mail_to_student(student_email, email_params, language=language)
+            send_mail_to_student(request, student_email, email_params, language=language)
 
     if previous_state.allowed:
         CourseEnrollmentAllowed.objects.get(course_id=course_id, email=student_email).delete()
@@ -203,14 +209,14 @@ def unenroll_email(course_id, student_email, email_students=False, email_params=
             email_params['message_type'] = 'allowed_unenroll'
             email_params['email_address'] = student_email
             # Since no User object exists for this student there is no "full_name" available.
-            send_mail_to_student(student_email, email_params, language=language)
+            send_mail_to_student(request, student_email, email_params, language=language)
 
     after_state = EmailEnrollmentState(course_id, student_email)
 
     return previous_state, after_state
 
 
-def send_beta_role_email(action, user, email_params):
+def send_beta_role_email(request, action, user, email_params):
     """
     Send an email to a user added or removed as a beta tester.
 
@@ -226,7 +232,7 @@ def send_beta_role_email(action, user, email_params):
         raise ValueError("Unexpected action received '{}' - expected 'add' or 'remove'".format(action))
     trying_to_add_inactive_user = not user.is_active and action == 'add'
     if not trying_to_add_inactive_user:
-        send_mail_to_student(user.email, email_params, language=get_user_email_language(user))
+        send_mail_to_student(request, user.email, email_params, language=get_user_email_language(user))
 
 
 def reset_student_attempts(course_id, student, module_state_key, requesting_user, delete_module=False):
@@ -419,7 +425,7 @@ def get_email_params(course, auto_enroll, secure=True, course_key=None, display_
     return email_params
 
 
-def send_mail_to_student(student, param_dict, language=None):
+def send_mail_to_student(request, student, param_dict, language=None):
     """
     Construct the email using templates and then send it.
     `student` is the student's email address (a `str`),
@@ -459,6 +465,7 @@ def send_mail_to_student(student, param_dict, language=None):
     # see if there is an activation email template definition available as configuration,
     # if so, then render that
     message_type = param_dict['message_type']
+    course_id = param_dict['course'].id
 
     ace_emails_dict = {
         'account_creation_and_enrollment': AccountCreationAndEnrollment,
@@ -471,13 +478,84 @@ def send_mail_to_student(student, param_dict, language=None):
     }
 
     message_class = ace_emails_dict[message_type]
-    message = message_class().personalize(
-        recipient=Recipient(username='', email_address=student),
-        language=language,
-        user_context=param_dict,
-    )
+    if message_type == 'allowed_enroll':
+        send_user_email(request, course_id, message_type, student)
+    else:
+        message = message_class().personalize(
+            recipient=Recipient(username='', email_address=student),
+            language=language,
+            user_context=param_dict,
+        )
 
-    ace.send(message)
+        ace.send(message)
+
+
+def send_user_email(request, course_id, type, email):
+    """
+    Send bulk email for inivitation or enrollment of the course
+    """
+    if not BulkEmailFlag.feature_enabled(course_id):
+        log.warning(u'Email is not enabled for course %s', course_id)
+        return HttpResponseForbidden("Email is not enabled for this course.")
+
+    # targets = ''
+    to_option = email
+    # subject = request.POST.get("subject")
+    subject = "subject"
+    # message = request.POST.get("message")
+    message = "message"
+
+    # allow two branding points to come from Site Configuration: which CourseEmailTemplate should be used
+    # and what the 'from' field in the email should be
+    #
+    # If these are None (there is no site configuration enabled for the current site) than
+    # the system will use normal system defaults
+    course_overview = CourseOverview.get_from_id(course_id)
+    from_addr = configuration_helpers.get_value('course_email_from_addr')
+    if isinstance(from_addr, dict):
+        # If course_email_from_addr is a dict, we are customizing
+        # the email template for each organization that has courses
+        # on the site. The dict maps from addresses by org allowing
+        # us to find the correct from address to use here.
+        from_addr = from_addr.get(course_overview.display_org_with_default)
+
+    template_name = configuration_helpers.get_value('course_email_template_name')
+    if isinstance(template_name, dict):
+        # If course_email_template_name is a dict, we are customizing
+        # the email template for each organization that has courses
+        # on the site. The dict maps template names by org allowing
+        # us to find the correct template to use here.
+        template_name = template_name.get(course_overview.display_org_with_default)
+
+    # Create the CourseEmail object.  This is saved immediately, so that
+    # any transaction that has been pending up to this point will also be
+    # committed.
+    try:
+        email = CourseEmail.create(
+            course_id,
+            request.user,
+            subject,
+            message,
+            to_option=to_option,
+            # targets=targets,
+            template_name=template_name,
+            from_addr=from_addr
+        )
+    except ValueError as err:
+        log.exception(u'Cannot create course email for course %s requested by user %s for targets %s',
+                      course_id, request.user, targets)
+        return HttpResponseBadRequest(repr(err))
+
+    # Submit the task, so that the correct InstructorTask object gets created (for monitoring purposes)
+    submit_bulk_course_email(request, course_id, email.id)
+
+    response_payload = {
+        'course_id': text_type(course_id),
+        'success': True,
+    }
+
+    return JsonResponse(response_payload)
+
 
 
 def render_message_to_string(subject_template, message_template, param_dict, language=None):

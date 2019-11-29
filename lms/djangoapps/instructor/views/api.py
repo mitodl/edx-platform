@@ -433,7 +433,7 @@ def register_and_enroll_students(request, course_id):  # pylint: disable=too-man
                             reason='Enrolling via csv upload',
                             state_transition=UNENROLLED_TO_ENROLLED,
                         )
-                        enroll_email(course_id=course_id, student_email=email, auto_enroll=True, email_students=True, email_params=email_params)
+                        enroll_email(request, course_id=course_id, student_email=email, auto_enroll=True, email_students=True, email_params=email_params)
                 elif is_email_retired(email):
                     # We are either attempting to enroll a retired user or create a new user with an email which is
                     # already associated with a retired account.  Simply block these attempts.
@@ -450,7 +450,7 @@ def register_and_enroll_students(request, course_id):  # pylint: disable=too-man
                     # will raise an IntegrityError exception.
                     password = generate_unique_password(generated_passwords)
                     errors = create_and_enroll_user(
-                        email, username, name, country, password, course_id, course_mode, request.user, email_params
+                        request, email, username, name, country, password, course_id, course_mode, request.user, email_params
                     )
                     row_errors.extend(errors)
 
@@ -539,7 +539,7 @@ def create_manual_course_enrollment(user, course_id, mode, enrolled_by, reason, 
     return enrollment_obj
 
 
-def create_and_enroll_user(email, username, name, country, password, course_id, course_mode, enrolled_by, email_params):
+def create_and_enroll_user(request, email, username, name, country, password, course_id, course_mode, enrolled_by, email_params):
     """
     Create a new user and enroll him/her to the given course, return list of errors in the following format
         Error format:
@@ -595,7 +595,7 @@ def create_and_enroll_user(email, username, name, country, password, course_id, 
                 'password': password,
                 'platform_name': configuration_helpers.get_value('platform_name', settings.PLATFORM_NAME),
             })
-            send_mail_to_student(email, email_params)
+            send_mail_to_student(request, email, email_params)
         except Exception as ex:  # pylint: disable=broad-except
             log.exception(
                 "Exception '{exception}' raised while sending email to new user.".format(exception=type(ex).__name__)
@@ -704,7 +704,7 @@ def students_update_enrollment(request, course_id):
             validate_email(email)  # Raises ValidationError if invalid
             if action == 'enroll':
                 before, after, enrollment_obj = enroll_email(
-                    course_id, email, auto_enroll, email_students, email_params, language=language
+                    request, course_id, email, auto_enroll, email_students, email_params, language=language
                 )
                 before_enrollment = before.to_dict()['enrollment']
                 before_user_registered = before.to_dict()['user']
@@ -727,7 +727,7 @@ def students_update_enrollment(request, course_id):
 
             elif action == 'unenroll':
                 before, after = unenroll_email(
-                    course_id, email, email_students, email_params, language=language
+                    request, course_id, email, email_students, email_params, language=language
                 )
                 before_enrollment = before.to_dict()['enrollment']
                 before_allowed = before.to_dict()['allowed']
@@ -843,7 +843,7 @@ def bulk_beta_modify_access(request, course_id):
         else:
             # If no exception thrown, see if we should send an email
             if email_students:
-                send_beta_role_email(action, user, email_params)
+                send_beta_role_email(request, action, user, email_params)
             # See if we should autoenroll the student
             if auto_enroll:
                 # Check if student is already enrolled
@@ -2685,8 +2685,8 @@ def send_email(request, course_id):
     - 'subject' specifies email's subject
     - 'message' specifies email's content
     """
-    course_id = CourseKey.from_string(course_id)
 
+    course_id = CourseKey.from_string(course_id)
     if not BulkEmailFlag.feature_enabled(course_id):
         log.warning(u'Email is not enabled for course %s', course_id)
         return HttpResponseForbidden("Email is not enabled for this course.")
@@ -2724,8 +2724,8 @@ def send_email(request, course_id):
         email = CourseEmail.create(
             course_id,
             request.user,
-            targets,
             subject, message,
+            targets=targets,
             template_name=template_name,
             from_addr=from_addr
         )

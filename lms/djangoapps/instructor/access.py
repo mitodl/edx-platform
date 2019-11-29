@@ -73,6 +73,7 @@ def _change_access(course, user, level, action, send_email=True):
         if level == 'ccx_coach':
             email_params = get_email_params(course, True)
             enroll_email(
+                request=request,
                 course_id=course.id,
                 student_email=user.email,
                 auto_enroll=True,

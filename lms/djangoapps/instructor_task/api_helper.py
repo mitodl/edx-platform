@@ -429,9 +429,11 @@ def submit_task(request, task_type, task_class, course_key, task_input, task_key
 
     `AlreadyRunningError` is raised if the task is already running.
     """
-    with outer_atomic():
-        # check to see if task is already running, and reserve it otherwise:
-        instructor_task = _reserve_task(course_key, task_type, task_key, task_input, request.user)
+
+    # with outer_atomic():
+    #     # check to see if task is already running, and reserve it otherwise:
+    #     instructor_task = _reserve_task(course_key, task_type, task_key, task_input, request.user)
+    instructor_task = _reserve_task(course_key, task_type, task_key, task_input, request.user)
 
     # make sure all data has been committed before handing off task to celery.
 

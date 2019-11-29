@@ -327,11 +327,14 @@ def submit_bulk_course_email(request, course_key, email_id):
     email_obj = CourseEmail.objects.get(id=email_id)
     # task_input has a limit to the size it can store, so any target_type with count > 1 is combined and counted
     targets = Counter([target.target_type for target in email_obj.targets.all()])
-    targets = [
-        target if count <= 1 else
-        "{} {}".format(count, target)
-        for target, count in targets.iteritems()
-    ]
+    if targets:
+        targets = [
+            target if count <= 1 else
+            "{} {}".format(count, target)
+            for target, count in targets.iteritems()
+        ]
+    else:
+        targets = Counter([email_obj.to_option])
 
     task_type = 'bulk_course_email'
     task_class = send_bulk_course_email

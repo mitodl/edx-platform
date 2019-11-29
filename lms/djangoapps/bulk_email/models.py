@@ -232,8 +232,8 @@ class CourseEmail(Email):
 
     course_id = CourseKeyField(max_length=255, db_index=True)
     # to_option is deprecated and unused, but dropping db columns is hard so it's still here for legacy reasons
-    to_option = models.CharField(max_length=64, choices=[("deprecated", "deprecated")])
-    targets = models.ManyToManyField(Target)
+    to_option = models.CharField(max_length=64, default='')
+    targets = models.ManyToManyField(Target, blank=True)
     template_name = models.CharField(null=True, max_length=255)
     from_addr = models.CharField(null=True, max_length=255)
 
@@ -242,7 +242,7 @@ class CourseEmail(Email):
 
     @classmethod
     def create(
-            cls, course_id, sender, targets, subject, html_message,
+            cls, course_id, sender, subject, html_message, targets=None, to_option='',
             text_message=None, template_name=None, from_addr=None):
         """
         Create an instance of CourseEmail.
@@ -251,30 +251,31 @@ class CourseEmail(Email):
         if text_message is None:
             text_message = html_to_text(html_message)
 
-        new_targets = []
-        for target in targets:
-            # split target, to handle cohort:cohort_name and track:mode_slug
-            target_split = target.split(':', 1)
-            # Ensure our desired target exists
-            if target_split[0] not in EMAIL_TARGETS:
-                fmt = 'Course email being sent to unrecognized target: "{target}" for "{course}", subject "{subject}"'
-                msg = fmt.format(target=target, course=course_id, subject=subject)
-                raise ValueError(msg)
-            elif target_split[0] == SEND_TO_COHORT:
-                # target_split[1] will contain the cohort name
-                cohort = CohortTarget.ensure_valid_cohort(target_split[1], course_id)
-                new_target, _ = CohortTarget.objects.get_or_create(target_type=target_split[0], cohort=cohort)
-            elif target_split[0] == SEND_TO_TRACK:
-                # target_split[1] contains the desired mode slug
-                CourseModeTarget.ensure_valid_mode(target_split[1], course_id)
+        if targets:
+            new_targets = []
+            for target in targets:
+                # split target, to handle cohort:cohort_name and track:mode_slug
+                target_split = target.split(':', 1)
+                # Ensure our desired target exists
+                if target_split[0] not in EMAIL_TARGETS:
+                    fmt = 'Course email being sent to unrecognized target: "{target}" for "{course}", subject "{subject}"'
+                    msg = fmt.format(target=target, course=course_id, subject=subject)
+                    raise ValueError(msg)
+                elif target_split[0] == SEND_TO_COHORT:
+                    # target_split[1] will contain the cohort name
+                    cohort = CohortTarget.ensure_valid_cohort(target_split[1], course_id)
+                    new_target, _ = CohortTarget.objects.get_or_create(target_type=target_split[0], cohort=cohort)
+                elif target_split[0] == SEND_TO_TRACK:
+                    # target_split[1] contains the desired mode slug
+                    CourseModeTarget.ensure_valid_mode(target_split[1], course_id)
 
-                # There could exist multiple CourseModes that match this query, due to differing currency types.
-                # The currencies do not affect user lookup though, so we can just use the first result.
-                mode = CourseMode.objects.filter(course_id=course_id, mode_slug=target_split[1])[0]
-                new_target, _ = CourseModeTarget.objects.get_or_create(target_type=target_split[0], track=mode)
-            else:
-                new_target, _ = Target.objects.get_or_create(target_type=target_split[0])
-            new_targets.append(new_target)
+                    # There could exist multiple CourseModes that match this query, due to differing currency types.
+                    # The currencies do not affect user lookup though, so we can just use the first result.
+                    mode = CourseMode.objects.filter(course_id=course_id, mode_slug=target_split[1])[0]
+                    new_target, _ = CourseModeTarget.objects.get_or_create(target_type=target_split[0], track=mode)
+                else:
+                    new_target, _ = Target.objects.get_or_create(target_type=target_split[0])
+                new_targets.append(new_target)
 
         # create the task, then save it immediately:
         course_email = cls(
@@ -286,8 +287,11 @@ class CourseEmail(Email):
             template_name=template_name,
             from_addr=from_addr,
         )
+
+        course_email.to_option = to_option
         course_email.save()  # Must exist in db before setting M2M relationship values
-        course_email.targets.add(*new_targets)
+        if targets:
+            course_email.targets.add(*new_targets)
         course_email.save()
 
         return course_email
