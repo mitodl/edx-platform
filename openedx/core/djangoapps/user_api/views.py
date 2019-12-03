@@ -34,6 +34,7 @@ from openedx.core.djangoapps.user_api.serializers import CountryTimeZoneSerializ
 from openedx.core.djangoapps.user_authn.cookies import set_logged_in_cookies
 from openedx.core.djangoapps.user_authn.views.register import create_account_with_params
 from openedx.core.lib.api.permissions import ApiKeyHeaderPermission
+from third_party_auth import pipeline
 from student.helpers import AccountValidationError
 from util.json_request import JsonResponse
 
@@ -122,6 +123,11 @@ class RegistrationView(APIView):
                 address already exists
             HttpResponse: 403 operation not allowed
         """
+
+        if not pipeline.running(request):
+            # if request is not running a third-party auth pipeline
+            return HttpResponseForbidden("Not allowed to register")
+
         data = request.POST.copy()
 
         email = data.get('email')
