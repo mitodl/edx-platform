@@ -7,7 +7,7 @@ Does not include any access control, be sure to check access before calling.
 import json
 import logging
 from datetime import datetime
-
+from collections import namedtuple
 
 import pytz
 from django.conf import settings
@@ -60,6 +60,7 @@ from opaque_keys.edx.keys import CourseKey, UsageKey
 from bulk_email.models import BulkEmailFlag, CourseEmail
 from util.json_request import JsonResponse, JsonResponseBadRequest
 from lms.djangoapps.instructor_task.api import submit_bulk_course_email
+from lms.djangoapps.bulk_email.tasks import _get_course_email_context
 
 log = logging.getLogger(__name__)
 
@@ -465,7 +466,7 @@ def send_mail_to_student(request, student, param_dict, language=None):
     # see if there is an activation email template definition available as configuration,
     # if so, then render that
     message_type = param_dict['message_type']
-    course_id = param_dict['course'].id
+    course = param_dict['course']
 
     ace_emails_dict = {
         'account_creation_and_enrollment': AccountCreationAndEnrollment,
@@ -479,7 +480,7 @@ def send_mail_to_student(request, student, param_dict, language=None):
 
     message_class = ace_emails_dict[message_type]
     if message_type == 'allowed_enroll':
-        send_user_email(request, course_id, message_type, student)
+        send_user_email(request, param_dict, student)
     else:
         message = message_class().personalize(
             recipient=Recipient(username='', email_address=student),
@@ -490,20 +491,32 @@ def send_mail_to_student(request, student, param_dict, language=None):
         ace.send(message)
 
 
-def send_user_email(request, course_id, type, email):
+def send_user_email(request, param_dict, email):
     """
     Send bulk email for inivitation or enrollment of the course
     """
+    course_id = param_dict["course"].id
     if not BulkEmailFlag.feature_enabled(course_id):
         log.warning(u'Email is not enabled for course %s', course_id)
         return HttpResponseForbidden("Email is not enabled for this course.")
 
-    # targets = ''
     to_option = email
-    # subject = request.POST.get("subject")
-    subject = "subject"
-    # message = request.POST.get("message")
-    message = "message"
+    course_context = _get_course_email_context(param_dict["course"])
+    message_ = {
+        "app_label": "instructor",
+        "name": "",
+        "uuid": "",
+        "send_uuid": "",
+    }
+    message_named = namedtuple('Struct', message_.keys())(*message_.values())
+    context = dict({"message": message_named})
+    context.update(course_context)
+    context.update(param_dict)
+    subject, message = render_message_to_string(
+        "instructor/edx_ace/allowedenroll/email/subject.txt",
+        "instructor/edx_ace/allowedenroll/email/body.html",
+        context)
+    subject = subject.strip()
 
     # allow two branding points to come from Site Configuration: which CourseEmailTemplate should be used
     # and what the 'from' field in the email should be
@@ -555,7 +568,6 @@ def send_user_email(request, course_id, type, email):
     }
 
     return JsonResponse(response_payload)
-
 
 
 def render_message_to_string(subject_template, message_template, param_dict, language=None):
