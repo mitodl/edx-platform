@@ -56,7 +56,7 @@ class GradesService(object):
         return PersistentSubsectionGradeOverride.get_override(user_id, usage_key)
 
     def override_subsection_grade(self, user_id, course_key_or_id, usage_key_or_id, earned_all=None,
-                                  earned_graded=None):
+                                  earned_graded=None, overrider=None, comment=None):
         """
         Override subsection grade (the PersistentSubsectionGrade model must already exist)
 
