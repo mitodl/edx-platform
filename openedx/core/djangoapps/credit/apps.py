@@ -17,4 +17,6 @@ class CreditConfig(AppConfig):
         from . import signals
         if settings.FEATURES.get('ENABLE_SPECIAL_EXAMS'):
             from .services import CreditService
+            from lms.djangoapps.instructor.services import InstructorService
             set_runtime_service('credit', CreditService())
+            set_runtime_service('instructor', InstructorService())
