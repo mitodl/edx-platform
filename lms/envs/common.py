@@ -140,6 +140,10 @@ FEATURES = {
     # Enables ability to restrict enrollment in specific courses by the user account login method
     'RESTRICT_ENROLL_BY_REG_METHOD': False,
 
+    # Allow for restricting enrollment to a specific social auth provider
+    # example value: 'mitx-kerberos'
+    # This will be matched against the beginning portion of the user's social auth uid
+    'RESTRICT_ENROLL_SOCIAL_PROVIDERS': [],
     # enable analytics server.
     # WARNING: THIS SHOULD ALWAYS BE SET TO FALSE UNDER NORMAL
     # LMS OPERATION. See analytics.py for details about what

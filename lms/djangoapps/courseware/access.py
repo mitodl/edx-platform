@@ -257,6 +257,21 @@ def _can_enroll_courselike(user, courselike):
         log.warning("ENROLLMENT DENIED in %s because @ in username %s" % (course_key, user.username))
         return ACCESS_DENIED
 
+    if settings.FEATURES.get('RESTRICT_ENROLL_SOCIAL_PROVIDERS'):
+        try:
+            social_providers = user.social_auth.all()
+        except AttributeError:
+            social_providers = []
+        allowed_providers = settings.FEATURES.get('RESTRICT_ENROLL_SOCIAL_PROVIDERS')
+        if social_providers and not any(
+            [any([social_provider.uid.startswith(allowed_provider)
+                  for allowed_provider in allowed_providers])
+             for social_provider in social_providers]):
+            log.warning(
+                "ENROLLMENT DENIED in %s because user %s not authenticated by %s",
+                course_key, user.username, allowed_provider)
+            return ACCESS_DENIED
+
     # If using a registration method to restrict enrollment (e.g., Shibboleth)
     if settings.FEATURES.get('RESTRICT_ENROLL_BY_REG_METHOD') and enrollment_domain:
         if user is not None and user.is_authenticated and \
