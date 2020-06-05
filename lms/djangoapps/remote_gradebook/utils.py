@@ -53,7 +53,7 @@ def get_remote_gradebook_resp(email, course, action, files=None, **kwargs):
     if not resp.ok:
         error_header = _("Error communicating with gradebook server at {url}").format(url=rg_url)
         return HTML('<p>{error_header}</p>{content}').format(error_header=error_header, content=resp.content), {}
-    return None, json.loads(resp.content)
+    return None, resp.json()
 
 
 def get_remote_gradebook_datatable_resp(user, course, action, files=None, **kwargs):
