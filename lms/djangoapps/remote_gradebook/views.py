@@ -5,6 +5,7 @@ HTTP request handler functions for the remote gradebook app
 import logging
 
 from django.db import transaction
+from django.http import HttpResponseForbidden
 from django.utils.translation import ugettext as _
 from django.views.decorators.cache import cache_control
 from django.views.decorators.csrf import ensure_csrf_cookie

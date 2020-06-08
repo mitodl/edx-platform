@@ -106,9 +106,9 @@ def get_assignment_grade_datatable(course, assignment_name, task_progress=None):
 
         if course_grade and not error:
             matching_assignment_grade = next(
-                ifilter(
-                    lambda grade_section: grade_section['label'] == assignment_name,
-                    course_grade.summary['section_breakdown']
+                iter(
+                    [grade_section for grade_section in course_grade.summary['section_breakdown']
+                     if grade_section['label'] == assignment_name]
                 ), {}
             )
             row_data.append([student.email, matching_assignment_grade.get('percent', 0)])
