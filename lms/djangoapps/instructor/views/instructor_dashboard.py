@@ -149,6 +149,9 @@ def instructor_dashboard_2(request, course_id):
     if settings.FEATURES.get('ENABLE_INSTRUCTOR_REMOTE_GRADEBOOK_CONTROLS', False):
         sections.append(_section_remote_gradebook(course))
 
+    if settings.FEATURES.get("ENABLE_CANVAS_INTEGRATION", False):
+        sections.append(_section_canvas_integration(course))
+
     analytics_dashboard_message = None
     if show_analytics_dashboard_message(course_key) and (access['staff'] or access['instructor']):
         # Construct a URL to the external analytics dashboard
@@ -778,6 +781,19 @@ def _section_remote_gradebook(course):
         ),
     }
     return section_data
+
+
+def _section_canvas_integration(course):
+    """ Provide data for the canvas dashboard section """
+    return {
+        'section_key': 'canvas_integration',
+        'section_display_name': _('Canvas'),
+        'course': course,
+        'add_canvas_enrollments_url': reverse(
+            'add_canvas_enrollments', kwargs={'course_id': course.id}
+        ),
+        "list_canvas_enrollments_url": reverse("list_canvas_enrollments", kwargs={"course_id": course.id}),
+    }
 
 
 def null_applicable_aside_types(block):  # pylint: disable=unused-argument
