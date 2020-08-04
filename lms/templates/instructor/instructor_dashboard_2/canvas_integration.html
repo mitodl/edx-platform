@@ -1,0 +1,23 @@
+<%page args="section_data" expression_filter="h"/>
+<%!
+from django.utils.translation import ugettext as _
+from openedx.core.djangolib.markup import HTML, Text
+%>
+<section>
+    <p>
+
+        <input type="button" name="list-canvas-enrollments" value="List enrollments on Canvas"
+               data-endpoint="${ section_data['list_canvas_enrollments_url'] }"/>
+    </p>
+    <p>
+        <input type="button" name="merge-canvas-enrollments" value="Merge enrollment list using Canvas"
+               data-endpoint="${ section_data['add_canvas_enrollments_url'] }" data-unenroll-current="false"/>
+        <input type="button" name="overload-canvas-enrollments" value="Overload enrollment list using Canvas"
+               data-endpoint="${ section_data['add_canvas_enrollments_url'] }" data-unenroll-current="true"/>
+    </p>
+    <hr/>
+    <h4 class="hd hd-4">${_("Canvas enrollments")}</h4>
+
+    <div id="errors" class="errors"></div>
+    <div id="results"></div>
+</section>
