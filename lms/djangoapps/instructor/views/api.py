@@ -3069,7 +3069,7 @@ def _create_error_response(request, msg):
 def _return_csv_response(filename, header, rows):
     """Returns a CSV http response for the given header and rows (excel/utf-8)."""
     response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = 'attachment; filename={0}'.format(text_type(filename).encode('utf-8'))
+    response['Content-Disposition'] = 'attachment; filename={0}'.format(filename)
     writer = csv.writer(response, dialect='excel', quotechar='"', quoting=csv.QUOTE_ALL)
     # In practice, there should not be non-ascii data in this query,
     # but trying to do the right thing anyway.
