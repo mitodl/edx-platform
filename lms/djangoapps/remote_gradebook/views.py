@@ -4,9 +4,7 @@ HTTP request handler functions for the remote gradebook app
 
 import logging
 
-from django.contrib.auth.models import User
 from django.db import transaction
-from django.http import HttpResponseForbidden
 from django.utils.translation import ugettext as _
 from django.views.decorators.cache import cache_control
 from django.views.decorators.csrf import ensure_csrf_cookie
@@ -15,132 +13,24 @@ from opaque_keys.edx.locator import CourseLocator
 from opaque_keys.edx.keys import CourseKey
 
 import remote_gradebook.tasks
+from remote_gradebook.api import (
+    require_course_permission,
+    enroll_emails_in_course,
+    get_enrolled_non_staff_users,
+    unenroll_non_staff_users_in_course,
+    get_course_assignment_choices,
+)
 from remote_gradebook.utils import (
     get_assignment_grade_datatable,
     get_remote_gradebook_datatable_resp,
 )
-from courseware.access import has_access
 from courseware.courses import get_course_by_id
 from util.json_request import JsonResponse
-from student.models import CourseEnrollment, CourseEnrollmentAllowed
-from lms.djangoapps.grades.context import grading_context_for_course
+from student.models import CourseEnrollment
 from instructor_task.api_helper import AlreadyRunningError
 from bridgekeeper.rules import is_staff
 
 log = logging.getLogger(__name__)
-
-def require_course_permission(permission):
-    """
-    Decorator with argument that requires a specific permission of the requesting
-    user. If the requirement is not satisfied, returns an
-    HttpResponseForbidden (403).
-
-    Assumes that request is in args[0].
-    Assumes that course_id is in kwargs['course_id'].
-    """
-    def decorator(func):
-        def wrapped(*args, **kwargs):
-            request = args[0]
-            course = get_course_by_id(CourseKey.from_string(kwargs['course_id']))
-
-            if request.user.has_perm(permission, course):
-                return func(*args, **kwargs)
-            else:
-                return HttpResponseForbidden()
-        return wrapped
-    return decorator
-
-def enroll_emails_in_course(emails, course_key):
-    """
-    Attempts to enroll all provided emails in a course. Emails without a corresponding
-    user have a CourseEnrollmentAllowed object created for the course.
-    """
-    results = {}
-    for email in emails:
-        user = User.objects.filter(email=email).first()
-        result = ''
-        if not user:
-            _, created = CourseEnrollmentAllowed.objects.get_or_create(
-                email=email,
-                course_id=course_key
-            )
-            if created:
-                result = 'User does not exist - created course enrollment permission'
-            else:
-                result = 'User does not exist - enrollment is already allowed'
-        elif not CourseEnrollment.is_enrolled(user, course_key):
-            try:
-                CourseEnrollment.enroll(user, course_key)
-                result = 'Enrolled user in the course'
-            except Exception as ex:  # pylint: disable=broad-except
-                result = 'Failed to enroll - {}'.format(ex)
-        else:
-            result = 'User already enrolled'
-        results[email] = result
-    return results
-
-
-def get_enrolled_non_staff_users(course):
-    """
-    Returns an iterable of non-staff enrolled users for a given course
-    """
-    return [
-        user for user in CourseEnrollment.objects.users_enrolled_in(course.id)
-        if not has_access(user, 'staff', course)
-    ]
-
-
-def unenroll_non_staff_users_in_course(course):
-    """
-    Unenrolls non-staff users in a course
-    """
-    results = {}
-    for enrolled_user in get_enrolled_non_staff_users(course):
-        has_staff_access = has_access(enrolled_user, 'staff', course)
-        if not has_staff_access:
-            CourseEnrollment.unenroll(enrolled_user, course.id)
-            result = 'Unenrolled user from the course'
-        else:
-            result = 'No action taken (staff user)'
-        results[enrolled_user.email] = result
-    return results
-
-
-def get_assignment_type_label(course, assignment_type):
-    """
-    Gets the label for an assignment based on its type and the grading policy of the course.
-    Returns the short label if one exists, or returns the full assignment type as the label
-    if (a) the grading policy doesn't cover this assignment type, or (b) the grading policy
-    has a blank short label for this assignment type
-    """
-    try:
-        matching_policy = next(
-            grader for grader in course.grading_policy['GRADER']
-            if grader['type'] == assignment_type
-        )
-        return matching_policy['short_label'] if 'short_label' in matching_policy else assignment_type
-    except StopIteration:
-        return assignment_type
-
-
-def get_course_assignment_labels(course):
-    """
-    Gets a list labels for all assignments in a course based on the assignment type and the
-    grading policy of the course.
-    E.g.: ['Hw 01', 'Hw 02', 'Ex 01', 'Lab']
-    """
-    grading_context = grading_context_for_course(course)
-    graded_item_labels = []
-    for graded_item_type, graded_items in grading_context['all_graded_subsections_by_type'].items():
-        label = get_assignment_type_label(course, graded_item_type)
-        if len(graded_items) == 1:
-            graded_item_labels.append(label)
-        elif len(graded_items) > 1:
-            for i, __ in enumerate(graded_items, start=1):
-                graded_item_labels.append(
-                    "{label} {index:02d}".format(label=label, index=i)
-                )
-    return graded_item_labels
 
 
 @require_POST
@@ -271,15 +161,15 @@ def add_enrollments_using_remote_gradebook(request, course_id):
 @ensure_csrf_cookie
 @cache_control(no_cache=True, no_store=True, must_revalidate=True)
 @require_course_permission(is_staff)
-def get_assignment_names(__, course_id):
+def get_assignment_choices(__, course_id):
     """
     Returns a datatable of the assignments available for this course
     """
     course_key = CourseKey.from_string(course_id)
     course = get_course_by_id(course_key)
-    assignment_names = get_course_assignment_labels(course)
+    assignment_choices = get_course_assignment_choices(course)
     return JsonResponse({
-        'data': assignment_names
+        'data': assignment_choices
     })
 
 
