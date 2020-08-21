@@ -656,8 +656,8 @@ def _section_remote_gradebook(course):
         'get_remote_gradebook_sections_url': reverse(
             'get_remote_gradebook_sections', kwargs={'course_id': course.id}
         ),
-        'get_assignment_names_url': reverse(
-            'get_assignment_names', kwargs={'course_id': course.id}
+        'get_assignment_choices_url': reverse(
+            'get_assignment_choices', kwargs={'course_id': course.id}
         ),
         'get_non_staff_enrollments_url': reverse(
             'get_non_staff_enrollments', kwargs={'course_id': course.id}
@@ -701,10 +701,18 @@ def _section_canvas_integration(course):
         'section_key': 'canvas_integration',
         'section_display_name': _('Canvas'),
         'course': course,
+        'get_assignment_choices_url': reverse(
+            'get_assignment_choices', kwargs={'course_id': course.id}
+        ),
         'add_canvas_enrollments_url': reverse(
             'add_canvas_enrollments', kwargs={'course_id': course.id}
         ),
         "list_canvas_enrollments_url": reverse("list_canvas_enrollments", kwargs={"course_id": course.id}),
+        "list_canvas_assignments_url": reverse("list_canvas_assignments", kwargs={"course_id": course.id}),
+        "list_canvas_grades_url": reverse("list_canvas_grades", kwargs={"course_id": course.id}),
+        "push_edx_grades_url": reverse(
+            "push_edx_grades", kwargs={"course_id": course.id}
+        ),
     }
 
 
