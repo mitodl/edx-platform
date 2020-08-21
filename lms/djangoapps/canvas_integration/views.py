@@ -6,9 +6,10 @@ from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_POST
 from opaque_keys.edx.locator import CourseLocator
 
+from canvas_integration.client import CanvasClient
 from courseware.courses import get_course_by_id
 from canvas_integration import api
-from remote_gradebook.views import require_course_permission
+from remote_gradebook.api import require_course_permission
 from student.models import CourseEnrollment, CourseEnrollmentAllowed
 from util.json_request import JsonResponse
 
@@ -38,13 +39,13 @@ def list_canvas_enrollments(request, course_id):
         # TODO: better exception class?
         raise Exception("No canvas_course_id set for course {}".format(course_id))
 
+    client = CanvasClient(canvas_course_id=course.canvas_course_id)
     # WARNING: this will block the web thread
-    enrollments = api.list_canvas_enrollments(course.canvas_course_id)
+    enrollment_dict = client.list_canvas_enrollments()
 
     results = [
-        {"email": email, **_get_edx_enrollment_data(email, course_key)} for email in sorted(enrollments)
+        {"email": email, **_get_edx_enrollment_data(email, course_key)} for email in sorted(enrollment_dict.keys())
     ]
-
     return JsonResponse(results)
 
 
@@ -68,3 +69,68 @@ def add_canvas_enrollments(request, course_id):
         unenroll_current=unenroll_current,
     )  # WARNING: this will block the web thread
     return JsonResponse({"status": "success"})
+
+
+@ensure_csrf_cookie
+@cache_control(no_cache=True, no_store=True, must_revalidate=True)
+@require_course_permission(is_staff)
+def list_canvas_assignments(request, course_id):
+    """List Canvas assignments"""
+    course_key = CourseLocator.from_string(course_id)
+    course = get_course_by_id(course_key)
+    client = CanvasClient(canvas_course_id=course.canvas_course_id)
+    if not course.canvas_course_id:
+        # TODO: better exception class?
+        raise Exception("No canvas_course_id set for course {}".format(course_id))
+    return JsonResponse(client.list_canvas_assignments())
+
+
+@ensure_csrf_cookie
+@cache_control(no_cache=True, no_store=True, must_revalidate=True)
+@require_course_permission(is_staff)
+def list_canvas_grades(request, course_id):
+    """List grades"""
+    assignment_id = int(request.GET.get("assignment_id"))
+    course_key = CourseLocator.from_string(course_id)
+    course = get_course_by_id(course_key)
+    client = CanvasClient(canvas_course_id=course.canvas_course_id)
+    if not course.canvas_course_id:
+        # TODO: better exception class?
+        raise Exception("No canvas_course_id set for course {}".format(course_id))
+    return JsonResponse(client.list_canvas_grades(assignment_id=assignment_id))
+
+
+@ensure_csrf_cookie
+@cache_control(no_cache=True, no_store=True, must_revalidate=True)
+@require_course_permission(is_staff)
+def push_edx_grades(request, course_id):
+    """Push user grades for all graded items in edX to Canvas"""
+    course_key = CourseLocator.from_string(course_id)
+    course = get_course_by_id(course_key)
+    if not course.canvas_course_id:
+        # TODO: better exception class?
+        raise Exception("No canvas_course_id set for course {}".format(course_id))
+    assignment_grades_updated, created_assignments = api.push_edx_grades_to_canvas(
+        course=course
+    )
+
+    results = {}
+    if assignment_grades_updated:
+        grade_update_results = {}
+        for subsection_block, grade_update_response in assignment_grades_updated.items():
+            if grade_update_response.ok:
+                message = "updated"
+            else:
+                message = {"error": grade_update_response.status_code}
+            grade_update_results[subsection_block.display_name] = message
+        results["grades"] = grade_update_results
+    if created_assignments:
+        created_assignment_results = {}
+        for subsection_block, new_assignment_response in created_assignments.items():
+            if new_assignment_response.ok:
+                message = "created"
+            else:
+                message = {"error": new_assignment_response.status_code}
+            created_assignment_results[subsection_block.display_name] = message
+        results["assignments"] = created_assignment_results
+    return JsonResponse(results)

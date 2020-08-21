@@ -8,7 +8,7 @@ from remote_gradebook import views
 
 urlpatterns = [
     url(r'^get_remote_gradebook_sections$', views.get_remote_gradebook_sections, name="get_remote_gradebook_sections"),
-    url(r'^get_assignment_names$', views.get_assignment_names, name="get_assignment_names"),
+    url(r'^get_assignment_choices$', views.get_assignment_choices, name="get_assignment_choices"),
     url(r'^get_non_staff_enrollments$', views.get_non_staff_enrollments, name="get_non_staff_enrollments"),
     url(r'^list_remote_enrolled_students$',
         views.list_matching_remote_enrolled_students, name="list_remote_enrolled_students"),
