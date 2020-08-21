@@ -90,13 +90,21 @@
                     url: url
                 }).done(function(respData) {
                     if (_.isEmpty(respData.errors)) {
-                        $.each(respData.data, function(index, optionValue) {
+                        var data = respData.data
+                        // If the data returned is a list of lists, convert it to an object/dictionary
+                        if (_.every(data, _.isArray)) {
+                            data = _.object(data)
+                        }
+                        var isArray = _.isArray(data)
+                        _.each(data, function(optionLabel, optionValue) {
+                            // If an array was returned, use each value as both the option value and label
+                            optionValue = isArray ? optionLabel : optionValue
                             edx.HtmlUtils.append(
                                 $el,
                                 edx.HtmlUtils.HTML(
                                     $('<option></option>')
                                         .attr('value', optionValue)
-                                        .text(optionValue)
+                                        .text(optionLabel)
                                 )
                             );
                         });
