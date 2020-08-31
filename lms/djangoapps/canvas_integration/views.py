@@ -27,7 +27,7 @@ def _get_edx_enrollment_data(email, course_key):
 
 @ensure_csrf_cookie
 @cache_control(no_cache=True, no_store=True, must_revalidate=True)
-@require_course_permission(permissions.EDIT_COURSE_ACCESS)
+@require_course_permission(permissions.OVERRIDE_GRADES)
 def list_canvas_enrollments(request, course_id):
     """
     Fetch enrollees for a course in canvas and list them
@@ -51,7 +51,7 @@ def list_canvas_enrollments(request, course_id):
 @require_POST
 @ensure_csrf_cookie
 @cache_control(no_cache=True, no_store=True, must_revalidate=True)
-@require_course_permission(permissions.EDIT_COURSE_ACCESS)
+@require_course_permission(permissions.OVERRIDE_GRADES)
 def add_canvas_enrollments(request, course_id):
     """
     Fetches enrollees for a course in canvas and enrolls those emails in the course in edX
@@ -72,7 +72,7 @@ def add_canvas_enrollments(request, course_id):
 
 @ensure_csrf_cookie
 @cache_control(no_cache=True, no_store=True, must_revalidate=True)
-@require_course_permission(permissions.EDIT_COURSE_ACCESS)
+@require_course_permission(permissions.OVERRIDE_GRADES)
 def list_canvas_assignments(request, course_id):
     """List Canvas assignments"""
     course_key = CourseLocator.from_string(course_id)
@@ -86,7 +86,7 @@ def list_canvas_assignments(request, course_id):
 
 @ensure_csrf_cookie
 @cache_control(no_cache=True, no_store=True, must_revalidate=True)
-@require_course_permission(permissions.EDIT_COURSE_ACCESS)
+@require_course_permission(permissions.OVERRIDE_GRADES)
 def list_canvas_grades(request, course_id):
     """List grades"""
     assignment_id = int(request.GET.get("assignment_id"))
@@ -101,7 +101,7 @@ def list_canvas_grades(request, course_id):
 
 @ensure_csrf_cookie
 @cache_control(no_cache=True, no_store=True, must_revalidate=True)
-@require_course_permission(permissions.EDIT_COURSE_ACCESS)
+@require_course_permission(permissions.OVERRIDE_GRADES)
 def push_edx_grades(request, course_id):
     """Push user grades for all graded items in edX to Canvas"""
     course_key = CourseLocator.from_string(course_id)
