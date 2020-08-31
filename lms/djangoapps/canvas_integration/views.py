@@ -1,6 +1,4 @@
-from bridgekeeper.rules import is_staff
 from django.contrib.auth.models import User
-from django.http import HttpResponse
 from django.views.decorators.cache import cache_control
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_POST
@@ -9,7 +7,8 @@ from opaque_keys.edx.locator import CourseLocator
 from canvas_integration.client import CanvasClient
 from courseware.courses import get_course_by_id
 from canvas_integration import api
-from remote_gradebook.api import require_course_permission
+from lms.djangoapps.instructor.views.api import require_course_permission
+from lms.djangoapps.instructor import permissions
 from student.models import CourseEnrollment, CourseEnrollmentAllowed
 from util.json_request import JsonResponse
 
@@ -28,7 +27,7 @@ def _get_edx_enrollment_data(email, course_key):
 
 @ensure_csrf_cookie
 @cache_control(no_cache=True, no_store=True, must_revalidate=True)
-@require_course_permission(is_staff)
+@require_course_permission(permissions.EDIT_COURSE_ACCESS)
 def list_canvas_enrollments(request, course_id):
     """
     Fetch enrollees for a course in canvas and list them
@@ -52,7 +51,7 @@ def list_canvas_enrollments(request, course_id):
 @require_POST
 @ensure_csrf_cookie
 @cache_control(no_cache=True, no_store=True, must_revalidate=True)
-@require_course_permission(is_staff)
+@require_course_permission(permissions.EDIT_COURSE_ACCESS)
 def add_canvas_enrollments(request, course_id):
     """
     Fetches enrollees for a course in canvas and enrolls those emails in the course in edX
@@ -73,7 +72,7 @@ def add_canvas_enrollments(request, course_id):
 
 @ensure_csrf_cookie
 @cache_control(no_cache=True, no_store=True, must_revalidate=True)
-@require_course_permission(is_staff)
+@require_course_permission(permissions.EDIT_COURSE_ACCESS)
 def list_canvas_assignments(request, course_id):
     """List Canvas assignments"""
     course_key = CourseLocator.from_string(course_id)
@@ -87,7 +86,7 @@ def list_canvas_assignments(request, course_id):
 
 @ensure_csrf_cookie
 @cache_control(no_cache=True, no_store=True, must_revalidate=True)
-@require_course_permission(is_staff)
+@require_course_permission(permissions.EDIT_COURSE_ACCESS)
 def list_canvas_grades(request, course_id):
     """List grades"""
     assignment_id = int(request.GET.get("assignment_id"))
@@ -102,7 +101,7 @@ def list_canvas_grades(request, course_id):
 
 @ensure_csrf_cookie
 @cache_control(no_cache=True, no_store=True, must_revalidate=True)
-@require_course_permission(is_staff)
+@require_course_permission(permissions.EDIT_COURSE_ACCESS)
 def push_edx_grades(request, course_id):
     """Push user grades for all graded items in edX to Canvas"""
     course_key = CourseLocator.from_string(course_id)
