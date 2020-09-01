@@ -27,7 +27,8 @@ class CanvasClient:
         })
         return session
 
-    def _add_per_page(self, url, per_page):
+    @staticmethod
+    def _add_per_page(url, per_page):
         """
         Add per_page query parameter to override default value of 10
 
