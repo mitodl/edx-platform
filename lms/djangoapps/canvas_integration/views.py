@@ -2,6 +2,7 @@
 import logging
 
 from django.contrib.auth.models import User
+from django.db import transaction
 from django.utils.translation import ugettext as _
 from django.views.decorators.cache import cache_control
 from django.views.decorators.csrf import ensure_csrf_cookie
@@ -59,6 +60,7 @@ def list_canvas_enrollments(request, course_id):
 @ensure_csrf_cookie
 @cache_control(no_cache=True, no_store=True, must_revalidate=True)
 @require_course_permission(permissions.OVERRIDE_GRADES)
+@transaction.non_atomic_requests
 def add_canvas_enrollments(request, course_id):
     """
     Fetches enrollees for a course in canvas and enrolls those emails in the course in edX
@@ -115,6 +117,7 @@ def list_canvas_grades(request, course_id):
 @ensure_csrf_cookie
 @cache_control(no_cache=True, no_store=True, must_revalidate=True)
 @require_course_permission(permissions.OVERRIDE_GRADES)
+@transaction.non_atomic_requests
 def push_edx_grades(request, course_id):
     """Push user grades for all graded items in edX to Canvas"""
     course_key = CourseLocator.from_string(course_id)
