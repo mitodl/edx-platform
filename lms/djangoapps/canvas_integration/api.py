@@ -150,7 +150,7 @@ def push_edx_grades_to_canvas(course):
     for subsection_block, user_grade_dict in subsection_block_user_grades.items():
         grade_update_payloads[subsection_block] = dict(
             update_grade_payload_kv(
-                enrolled_user_dict[student_user.email],
+                enrolled_user_dict[student_user.email.lower()],
                 grade.percent_graded
             )
             for student_user, grade in user_grade_dict.items()
