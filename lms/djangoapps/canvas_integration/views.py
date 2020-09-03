@@ -56,11 +56,11 @@ def list_canvas_enrollments(request, course_id):
     return JsonResponse(results)
 
 
+@transaction.non_atomic_requests
 @require_POST
 @ensure_csrf_cookie
 @cache_control(no_cache=True, no_store=True, must_revalidate=True)
 @require_course_permission(permissions.OVERRIDE_GRADES)
-@transaction.non_atomic_requests
 def add_canvas_enrollments(request, course_id):
     """
     Fetches enrollees for a course in canvas and enrolls those emails in the course in edX
@@ -113,11 +113,11 @@ def list_canvas_grades(request, course_id):
     return JsonResponse(client.list_canvas_grades(assignment_id=assignment_id))
 
 
+@transaction.non_atomic_requests
 @require_POST
 @ensure_csrf_cookie
 @cache_control(no_cache=True, no_store=True, must_revalidate=True)
 @require_course_permission(permissions.OVERRIDE_GRADES)
-@transaction.non_atomic_requests
 def push_edx_grades(request, course_id):
     """Push user grades for all graded items in edX to Canvas"""
     course_key = CourseLocator.from_string(course_id)
