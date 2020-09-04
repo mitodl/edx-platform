@@ -31,8 +31,7 @@ def push_edx_grades_to_canvas(_xmodule_instance_args, _entry_id, course_id, task
     start_time = time()
     num_reports = 1
     task_progress = TaskProgress(action_name, num_reports, start_time)
-    course_key = CourseLocator.from_string(course_id)
-    course = get_course_by_id(course_key)
+    course = get_course_by_id(course_id)
     assignment_grades_updated, created_assignments = api.push_edx_grades_to_canvas(
         course=course
     )
