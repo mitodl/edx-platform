@@ -1,16 +1,25 @@
+"""Views for canvas integration"""
+import logging
+
 from django.contrib.auth.models import User
+from django.db import transaction
+from django.utils.translation import ugettext as _
 from django.views.decorators.cache import cache_control
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_POST
 from opaque_keys.edx.locator import CourseLocator
 
-from canvas_integration.client import CanvasClient
+from lms.djangoapps.canvas_integration.client import CanvasClient
 from courseware.courses import get_course_by_id
-from canvas_integration import api
+from lms.djangoapps.canvas_integration import tasks
+from lms.djangoapps.instructor_task.api_helper import AlreadyRunningError
 from lms.djangoapps.instructor.views.api import require_course_permission
 from lms.djangoapps.instructor import permissions
 from student.models import CourseEnrollment, CourseEnrollmentAllowed
 from util.json_request import JsonResponse
+
+
+log = logging.getLogger(__name__)
 
 
 def _get_edx_enrollment_data(email, course_key):
@@ -35,7 +44,6 @@ def list_canvas_enrollments(request, course_id):
     course_key = CourseLocator.from_string(course_id)
     course = get_course_by_id(course_key)
     if not course.canvas_course_id:
-        # TODO: better exception class?
         raise Exception("No canvas_course_id set for course {}".format(course_id))
 
     client = CanvasClient(canvas_course_id=course.canvas_course_id)
@@ -48,6 +56,7 @@ def list_canvas_enrollments(request, course_id):
     return JsonResponse(results)
 
 
+@transaction.non_atomic_requests
 @require_POST
 @ensure_csrf_cookie
 @cache_control(no_cache=True, no_store=True, must_revalidate=True)
@@ -60,14 +69,21 @@ def add_canvas_enrollments(request, course_id):
     course_key = CourseLocator.from_string(course_id)
     course = get_course_by_id(course_key)
     if not course.canvas_course_id:
-        # TODO: better exception class?
         raise Exception("No canvas_course_id set for course {}".format(course_id))
-    api.sync_canvas_enrollments(
-        course_key=course_id,
-        canvas_course_id=course.canvas_course_id,
-        unenroll_current=unenroll_current,
-    )  # WARNING: this will block the web thread
-    return JsonResponse({"status": "success"})
+
+    try:
+        tasks.run_sync_canvas_enrollments(
+            request=request,
+            course_key=course_id,
+            canvas_course_id=course.canvas_course_id,
+            unenroll_current=unenroll_current,
+        )
+        log.info("Syncing canvas enrollments for course %s", course_id)
+        success_status = _("Syncing canvas enrollments")
+        return JsonResponse({"status": success_status})
+    except AlreadyRunningError:
+        already_running_status = _("Syncing canvas enrollments. See Pending Tasks below to view the status.")
+        return JsonResponse({"status": already_running_status})
 
 
 @ensure_csrf_cookie
@@ -79,7 +95,6 @@ def list_canvas_assignments(request, course_id):
     course = get_course_by_id(course_key)
     client = CanvasClient(canvas_course_id=course.canvas_course_id)
     if not course.canvas_course_id:
-        # TODO: better exception class?
         raise Exception("No canvas_course_id set for course {}".format(course_id))
     return JsonResponse(client.list_canvas_assignments())
 
@@ -94,11 +109,12 @@ def list_canvas_grades(request, course_id):
     course = get_course_by_id(course_key)
     client = CanvasClient(canvas_course_id=course.canvas_course_id)
     if not course.canvas_course_id:
-        # TODO: better exception class?
         raise Exception("No canvas_course_id set for course {}".format(course_id))
     return JsonResponse(client.list_canvas_grades(assignment_id=assignment_id))
 
 
+@transaction.non_atomic_requests
+@require_POST
 @ensure_csrf_cookie
 @cache_control(no_cache=True, no_store=True, must_revalidate=True)
 @require_course_permission(permissions.OVERRIDE_GRADES)
@@ -107,29 +123,15 @@ def push_edx_grades(request, course_id):
     course_key = CourseLocator.from_string(course_id)
     course = get_course_by_id(course_key)
     if not course.canvas_course_id:
-        # TODO: better exception class?
         raise Exception("No canvas_course_id set for course {}".format(course_id))
-    assignment_grades_updated, created_assignments = api.push_edx_grades_to_canvas(
-        course=course
-    )
-
-    results = {}
-    if assignment_grades_updated:
-        grade_update_results = {}
-        for subsection_block, grade_update_response in assignment_grades_updated.items():
-            if grade_update_response.ok:
-                message = "updated"
-            else:
-                message = {"error": grade_update_response.status_code}
-            grade_update_results[subsection_block.display_name] = message
-        results["grades"] = grade_update_results
-    if created_assignments:
-        created_assignment_results = {}
-        for subsection_block, new_assignment_response in created_assignments.items():
-            if new_assignment_response.ok:
-                message = "created"
-            else:
-                message = {"error": new_assignment_response.status_code}
-            created_assignment_results[subsection_block.display_name] = message
-        results["assignments"] = created_assignment_results
-    return JsonResponse(results)
+    try:
+        tasks.run_push_edx_grades_to_canvas(
+            request=request,
+            course_id=course_id,
+        )
+        log.info("Pushing edX grades to canvas for course %s", course_id)
+        success_status = _("Pushing edX grades to canvas")
+        return JsonResponse({"status": success_status})
+    except AlreadyRunningError:
+        already_running_status = _("Pushing edX grades to canvas. See Pending Tasks below to view the status.")
+        return JsonResponse({"status": already_running_status})
