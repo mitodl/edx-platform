@@ -2,6 +2,13 @@
 
 (function($, _) {  // eslint-disable-line wrap-iife
     'use strict';
+    var PendingInstructorTasks = function() {
+        return window.InstructorDashboard.util.PendingInstructorTasks;
+    };
+    var ReportDownloads = function() {
+        return window.InstructorDashboard.util.ReportDownloads;
+    };
+
     var CanvasIntegration = (function() {
 
       function tableify(data) {
@@ -43,6 +50,8 @@
         var $canvasAssignSection = this.$section.find("#canvas-assignment-section");
         var $pushAllEdxGradesBtn = this.$section.find("input[name='push-all-edx-grades']");
         var $assignmentInput = this.$section.find("select[name='assignment-id']");
+        this.report_downloads = new (ReportDownloads())(this.$section)
+        this.instructor_tasks = new (PendingInstructorTasks())(this.$section);
 
         var setLoading = function() {
           $errors.html("")
@@ -164,7 +173,15 @@
           );
         })
       }
-      InstructorDashboardCanvasIntegration.prototype.onClickTitle = function() {};
+      InstructorDashboardCanvasIntegration.prototype.onClickTitle = function() {
+        this.instructor_tasks.task_poller.start();
+        return this.report_downloads.downloads_poller.start();
+      };
+
+      InstructorDashboardCanvasIntegration.prototype.onExit = function() {
+        this.instructor_tasks.task_poller.stop();
+        return this.report_downloads.downloads_poller.stop();
+      }
 
       return InstructorDashboardCanvasIntegration
     })();
