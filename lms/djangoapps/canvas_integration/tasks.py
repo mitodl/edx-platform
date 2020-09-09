@@ -4,12 +4,14 @@ import logging
 from functools import partial
 
 from celery import task
+from opaque_keys.edx.locator import CourseLocator
 
 from canvas_integration import task_helpers
 from canvas_integration.constants import (
     TASK_TYPE_SYNC_CANVAS_ENROLLMENTS,
     TASK_TYPE_PUSH_EDX_GRADES_TO_CANVAS,
 )
+from courseware.courses import get_course_by_id
 from instructor_task.api_helper import submit_task
 from instructor_task.tasks_base import BaseInstructorTask
 from instructor_task.tasks_helper.runner import run_main_task
@@ -51,7 +53,11 @@ def run_push_edx_grades_to_canvas(request, course_id):
     """
     task_type = TASK_TYPE_PUSH_EDX_GRADES_TO_CANVAS
     task_class = push_edx_grades_to_canvas_task
-    task_input = {}
+    task_input = {
+        # course_id is already passed into the task, but we need to put it in task_input as well
+        # so the instructor task status can be properly calculated instead of being marked incomplete
+        "course_id": str(course_id)
+    }
     task_key = hashlib.md5(course_id.encode("utf8")).hexdigest()
     TASK_LOG.debug("Submitting task to push edX grades to Canvas")
     return submit_task(request, task_type, task_class, course_id, task_input, task_key)

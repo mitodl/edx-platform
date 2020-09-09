@@ -3,8 +3,6 @@ Helper functions for canvas integration tasks
 """
 from time import time
 
-from opaque_keys.edx.locator import CourseLocator
-
 from canvas_integration import api
 from courseware.courses import get_course_by_id
 from instructor_task.tasks_helper.runner import TaskProgress
