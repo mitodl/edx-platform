@@ -54,9 +54,9 @@ def run_push_edx_grades_to_canvas(request, course_id):
     task_type = TASK_TYPE_PUSH_EDX_GRADES_TO_CANVAS
     task_class = push_edx_grades_to_canvas_task
     task_input = {
-        # course_id is already passed into the task, but we need to put it in task_input as well
+        # course_key is already passed into the task, but we need to put it in task_input as well
         # so the instructor task status can be properly calculated instead of being marked incomplete
-        "course_id": str(course_id)
+        "course_key": str(course_id)
     }
     task_key = hashlib.md5(course_id.encode("utf8")).hexdigest()
     TASK_LOG.debug("Submitting task to push edX grades to Canvas")

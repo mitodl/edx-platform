@@ -151,7 +151,7 @@ def get_task_completion_info(instructor_task):
         problem_url = task_input.get('problem_url')
         entrance_exam_url = task_input.get('entrance_exam_url')
         email_id = task_input.get('email_id')
-        course_id = task_input.get('course_id')
+        course_id = task_input.get('course_key')
 
     if instructor_task.task_state == PROGRESS:
         # special message for providing progress updates:
