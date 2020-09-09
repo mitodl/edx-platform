@@ -1,7 +1,6 @@
 import logging
-import time
 import pytz
-from urllib.parse import urljoin
+from urllib.parse import urlencode, urljoin, urlparse, parse_qs
 import requests
 
 from django.conf import settings
@@ -28,10 +27,31 @@ class CanvasClient:
         })
         return session
 
+    @staticmethod
+    def _add_per_page(url, per_page):
+        """
+        Add per_page query parameter to override default value of 10
+
+        Args:
+            url (str): The url to update
+            per_page (int): The new per_page value
+
+        Returns:
+            str: The updated URL
+        """
+        pieces = urlparse(url)
+        query = parse_qs(pieces.query)
+        query['per_page'] = per_page
+        query_string = urlencode(query, doseq=True)
+        pieces = pieces._replace(query=query_string)
+        return pieces.geturl()
+
     def _paginate(self, url, *args, **kwargs):
         """
         Iterate over the paginated results of a request
         """
+        url = self._add_per_page(url, 100)  # increase per_page to 100 from default of 10
+
         items = []
         while url:
             resp = self.session.get(url, *args, **kwargs)
@@ -42,10 +62,6 @@ class CanvasClient:
             for link in links:
                 if link["rel"] == "next":
                     url = link["url"]
-                    # TODO: delay at all? Canvas docs don't say it's necessary, just that the throttled amount is
-                    # respected. If we go over it should trigger a 403 which will raise an exception here.
-                    # 0.2 seconds per request is just a guess to space out requests on the Canvas API
-                    time.sleep(0.2)
 
         return items
 
