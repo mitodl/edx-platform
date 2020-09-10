@@ -52,8 +52,10 @@ from lms.djangoapps.instructor_task.subtasks import (
 )
 from openedx.core.djangoapps.site_configuration import helpers as configuration_helpers
 from openedx.core.lib.courses import course_image_url
+from .toggles import is_email_use_default_from_bulk_enabled
 from common.djangoapps.util.date_utils import get_default_time_display
 from common.djangoapps.util.string_utils import _has_non_ascii_characters
+
 
 log = logging.getLogger('edx.celery.task')
 
@@ -495,9 +497,14 @@ def _send_course_email(entry_id, email_id, to_list, global_email_context, subtas
     course_title = global_email_context['course_title']
     course_language = global_email_context['course_language']
 
-    # use the email from address in the CourseEmail, if it is present, otherwise compute it
-    from_addr = course_email.from_addr if course_email.from_addr else \
-        _get_source_address(course_email.course_id, course_title, course_language)
+    # If EMAIL_USE_DEFAULT_FROM_FOR_BULK is True, use the default email from address.
+    # Otherwise compute a custom from address
+    if is_email_use_default_from_bulk_enabled():
+        from_addr = settings.DEFAULT_FROM_EMAIL
+    else:
+        # use the email from address in the CourseEmail, if it is present, otherwise compute it
+        from_addr = course_email.from_addr if course_email.from_addr else \
+            _get_source_address(course_email.course_id, course_title, course_language)
 
     # use the CourseEmailTemplate that was associated with the CourseEmail
     course_email_template = course_email.get_template()
