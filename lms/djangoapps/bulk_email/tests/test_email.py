@@ -297,6 +297,25 @@ class TestEmailSendFromDashboardMockedHtmlToText(EmailSendFromDashboardTestCase)
             [self.instructor.email] + [s.email for s in self.staff]
         )
 
+    @patch('bulk_email.tasks.is_email_use_default_from_bulk_enabled', Mock(return_value=True))
+    @override_settings(DEFAULT_FROM_EMAIL='test@example.com')
+    def test_email_from_address(self):
+        """
+        Make sure the from_address should be the DEFAULT_FROM_EMAIL when corresponding flag is enabled.
+        """
+        test_email = {
+            'action': 'Send email',
+            'send_to': '["staff"]',
+            'subject': 'test subject for staff',
+            'message': 'test message for subject'
+        }
+        response = self.client.post(self.send_mail_url, test_email)
+        from_email = mail.outbox[0].from_email
+        self.assertEqual(
+            from_email,
+            'test@example.com'
+        )
+
     def test_send_to_cohort(self):
         """
         Make sure email sent to a cohort goes there.
