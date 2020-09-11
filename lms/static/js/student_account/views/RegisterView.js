@@ -63,6 +63,7 @@
                     this.autoRegisterWelcomeMessage = data.thirdPartyAuth.autoRegisterWelcomeMessage || '';
                     this.registerFormSubmitButtonText =
                         data.thirdPartyAuth.registerFormSubmitButtonText || _('Create Account');
+                    this.is_require_third_party_auth_enabled = data.is_require_third_party_auth_enabled || false;
 
                     this.listenTo(this.model, 'sync', this.saveSuccess);
                     this.listenTo(this.model, 'validation', this.renderLiveValidations);
@@ -146,7 +147,8 @@
                                 hasSecondaryProviders: this.hasSecondaryProviders,
                                 platformName: this.platformName,
                                 autoRegisterWelcomeMessage: this.autoRegisterWelcomeMessage,
-                                registerFormSubmitButtonText: this.registerFormSubmitButtonText
+                                registerFormSubmitButtonText: this.registerFormSubmitButtonText,
+                                is_require_third_party_auth_enabled: this.is_require_third_party_auth_enabled
                             }
                         });
 
