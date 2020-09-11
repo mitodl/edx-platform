@@ -3080,7 +3080,7 @@ def _return_csv_response(filename, header, rows):
 
 
 @ensure_csrf_cookie
-@require_course_permission(permissions.is_staff)
+@require_course_permission(permissions.VIEW_DASHBOARD)
 def get_rapid_response_report(request, course_id, run_id):  # pylint: disable=unused-argument
     """
     Return csv file corresponding to given run_id
