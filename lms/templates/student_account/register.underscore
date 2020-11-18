@@ -53,7 +53,7 @@
         <span class="auto-register-message"><%- context.autoRegisterWelcomeMessage %></span>
     <% } %>
 
-    <% if (!context.is_require_third_party_auth_enabled) { %>
+    <div class="form-fields <% if (context.is_require_third_party_auth_enabled) { %>hidden<% } %>">
         <%= context.fields /* xss-lint: disable=underscore-not-escaped */ %>
 
         <div class="form-field checkbox-optional_fields_toggle">
@@ -69,5 +69,5 @@
         <button type="submit" class="action action-primary action-update js-register register-button">
             <% if ( context.registerFormSubmitButtonText ) { %><%- context.registerFormSubmitButtonText %><% } else { %><%- gettext("Create Account") %><% } %>
         </button>
-    <% } %>
+    </div>
 </form>

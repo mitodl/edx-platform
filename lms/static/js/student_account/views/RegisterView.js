@@ -38,6 +38,7 @@
                     'terms_of_service'
                 ],
                 formType: 'register',
+                formFields: '.form-fields',
                 formStatusTpl: formStatusTpl,
                 authWarningJsHook: 'js-auth-warning',
                 defaultFormErrorsTitle: gettext('We couldn\'t create your account.'),
@@ -493,6 +494,7 @@
                         jsHook: this.authWarningJsHook,
                         message: fullMsg
                     });
+                    $(this.formFields).removeClass('hidden');
                 },
 
                 submitForm: function(event) { // eslint-disable-line no-unused-vars
