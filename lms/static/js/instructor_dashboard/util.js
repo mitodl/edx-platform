@@ -97,7 +97,14 @@
         */
 
                 name: gettext('Submitted'),
-                minWidth: 120
+                minWidth: 120,
+                formatter: function(row, cell, value) {
+                  if (!value) {
+                    return value
+                  }
+                  var fromNow = moment(value).fromNow()
+                  return value + "<br />(" + fromNow + ")"
+                }
             }, {
                 id: 'duration_sec',
                 field: 'duration_sec',
