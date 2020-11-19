@@ -43,7 +43,9 @@ from lms.djangoapps.instructor_task.tasks import (
     reset_problem_attempts,
     send_bulk_course_email
 )
-from common.djangoapps.util import milestones_helpers
+from remote_gradebook.constants import RGB_TASK_TYPES
+from canvas_integration.constants import CANVAS_TASK_TYPES
+from util import milestones_helpers
 from xmodule.modulestore.django import modulestore
 
 
@@ -65,6 +67,39 @@ def get_running_instructor_tasks(course_id):
     for state in READY_STATES:
         instructor_tasks = instructor_tasks.exclude(task_state=state)
     return instructor_tasks.order_by('-id')
+
+
+def _get_filtered_instructor_tasks(course_id, user, task_types):
+    """
+    Returns a filtered query of InstructorTask for use for listing remote gradebook or canvas tasks
+    """
+    instructor_tasks = get_running_instructor_tasks(course_id)
+    now = datetime.datetime.now(UTC)
+    rgb_tasks = InstructorTask.objects.filter(
+        course_id=course_id,
+        task_type__in=task_types,
+        updated__lte=now,
+        updated__gte=now - datetime.timedelta(days=2),
+        requester=user
+    ).order_by('-updated')
+
+    return (instructor_tasks | rgb_tasks).distinct()[0:3]
+
+
+def get_running_instructor_rgb_tasks(course_id, user):
+    """
+    Returns a query of InstructorTask objects of running tasks for a given course
+    including remote gradebook-specific tasks.
+    """
+    return _get_filtered_instructor_tasks(course_id, user, RGB_TASK_TYPES)
+
+
+def get_running_instructor_canvas_tasks(course_id, user):
+    """
+    Returns a query of InstructorTask objects of running tasks for a given course
+    including remote gradebook-specific tasks.
+    """
+    return _get_filtered_instructor_tasks(course_id, user, CANVAS_TASK_TYPES)
 
 
 def get_instructor_task_history(course_id, usage_key=None, student=None, task_type=None):
