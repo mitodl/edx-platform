@@ -13,8 +13,8 @@ from django.utils.translation import ugettext_noop
 from instructor_task.api_helper import submit_task
 from instructor_task.tasks_base import BaseInstructorTask
 from instructor_task.tasks_helper.runner import run_main_task
-from remote_gradebook.task_helpers import generate_assignment_grade_csv, post_grades_to_rgb
-from remote_gradebook.constants import (
+from lms.djangoapps.remote_gradebook.task_helpers import generate_assignment_grade_csv, post_grades_to_rgb
+from lms.djangoapps.remote_gradebook.constants import (
     TASK_TYPE_RGB_EXPORT_ASSIGNMENT_GRADES,
     TASK_TYPE_RGB_EXPORT_GRADES,
 )

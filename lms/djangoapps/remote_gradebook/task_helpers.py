@@ -14,7 +14,7 @@ from courseware.courses import get_course_by_id
 from instructor_task.tasks_helper.misc import _progress_error
 from instructor_task.tasks_helper.runner import TaskProgress
 from instructor_task.tasks_helper.utils import upload_csv_to_report_store
-from remote_gradebook.utils import get_remote_gradebook_resp, get_assignment_grade_datatable
+from lms.djangoapps.remote_gradebook.utils import get_remote_gradebook_resp, get_assignment_grade_datatable
 
 log = logging.getLogger(__name__)
 

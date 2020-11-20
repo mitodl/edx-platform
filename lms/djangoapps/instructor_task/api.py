@@ -44,8 +44,8 @@ from lms.djangoapps.instructor_task.tasks import (
     reset_problem_attempts,
     send_bulk_course_email,
 )
-from remote_gradebook.constants import RGB_TASK_TYPES
-from canvas_integration.constants import CANVAS_TASK_TYPES
+from lms.djangoapps.remote_gradebook.constants import RGB_TASK_TYPES
+from lms.djangoapps.canvas_integration.constants import CANVAS_TASK_TYPES
 from util import milestones_helpers
 from xmodule.modulestore.django import modulestore
 
