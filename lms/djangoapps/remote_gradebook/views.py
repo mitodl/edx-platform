@@ -3,6 +3,7 @@ HTTP request handler functions for the remote gradebook app
 """
 
 import logging
+import remote_gradebook.tasks
 
 from django.db import transaction
 from django.utils.translation import ugettext as _
