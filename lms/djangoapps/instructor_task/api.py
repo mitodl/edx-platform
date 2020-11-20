@@ -6,10 +6,11 @@ already been submitted, filtered either by running state or input
 arguments.
 
 """
-
+import datetime
 
 import hashlib
 from collections import Counter
+from pytz import UTC
 
 import six
 from celery.states import READY_STATES
@@ -41,10 +42,10 @@ from lms.djangoapps.instructor_task.tasks import (
     proctored_exam_results_csv,
     rescore_problem,
     reset_problem_attempts,
-    send_bulk_course_email
+    send_bulk_course_email,
 )
-from remote_gradebook.constants import RGB_TASK_TYPES
-from canvas_integration.constants import CANVAS_TASK_TYPES
+from lms.djangoapps.remote_gradebook.constants import RGB_TASK_TYPES
+from lms.djangoapps.canvas_integration.constants import CANVAS_TASK_TYPES
 from util import milestones_helpers
 from xmodule.modulestore.django import modulestore
 
@@ -345,7 +346,7 @@ def submit_bulk_course_email(request, course_key, email_id):
     targets = Counter([target.target_type for target in email_obj.targets.all()])
     targets = [
         target if count <= 1 else
-        u"{} {}".format(count, target)
+        "{} {}".format(count, target)
         for target, count in six.iteritems(targets)
     ]
 
