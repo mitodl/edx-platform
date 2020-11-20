@@ -4,7 +4,7 @@ Canvas Integration API endpoint urls.
 
 from django.conf.urls import url
 
-from lms.djangoapps.canvas_integration import views
+from canvas_integration import views
 
 urlpatterns = [
     url(r'^add_canvas_enrollments$',

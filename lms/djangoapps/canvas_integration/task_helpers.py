@@ -3,7 +3,7 @@ Helper functions for canvas integration tasks
 """
 from time import time
 
-from lms.djangoapps.canvas_integration import api
+from canvas_integration import api
 from courseware.courses import get_course_by_id
 from instructor_task.tasks_helper.runner import TaskProgress
 

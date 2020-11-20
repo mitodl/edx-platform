@@ -5,7 +5,7 @@ import requests
 
 from django.conf import settings
 
-from lms.djangoapps.canvas_integration.constants import DEFAULT_ASSIGNMENT_POINTS
+from canvas_integration.constants import DEFAULT_ASSIGNMENT_POINTS
 
 
 log = logging.getLogger(__name__)

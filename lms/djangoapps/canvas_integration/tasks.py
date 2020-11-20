@@ -6,8 +6,8 @@ from functools import partial
 from celery import task
 from opaque_keys.edx.locator import CourseLocator
 
-from lms.djangoapps.canvas_integration import task_helpers
-from lms.djangoapps.canvas_integration.constants import (
+from canvas_integration import task_helpers
+from canvas_integration.constants import (
     TASK_TYPE_SYNC_CANVAS_ENROLLMENTS,
     TASK_TYPE_PUSH_EDX_GRADES_TO_CANVAS,
 )
