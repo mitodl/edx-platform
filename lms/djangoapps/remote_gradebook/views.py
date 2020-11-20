@@ -3,6 +3,7 @@ HTTP request handler functions for the remote gradebook app
 """
 
 import logging
+import remote_gradebook.tasks
 
 from django.db import transaction
 from django.http import HttpResponseForbidden
@@ -15,7 +16,6 @@ from opaque_keys.edx.keys import CourseKey
 
 from lms.djangoapps.instructor.views.api import require_course_permission
 from lms.djangoapps.instructor import permissions
-from lms.djangoapps import remote_gradebook.tasks
 from lms.djangoapps.remote_gradebook.api import (
     enroll_emails_in_course,
     get_enrolled_non_staff_users,
