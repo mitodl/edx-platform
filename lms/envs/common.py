@@ -262,14 +262,12 @@ FEATURES = {
     # .. toggle_tickets: https://openedx.atlassian.net/browse/OSPR-1814
     'HIDE_DASHBOARD_COURSES_UNTIL_ACTIVATED': False,
 
-    # .. toggle_name: FEATURES['ENABLE_STUDENT_HISTORY_VIEW']
-    # .. toggle_implementation: DjangoSetting
-    # .. toggle_default: True
-    # .. toggle_description: This provides a UI to show a student's submission history in a problem by the Staff Debug
-    #   tool. Set to False if you want to hide Submission History from the courseware page.
-    # .. toggle_use_cases: open_edx
-    # .. toggle_creation_date: 2013-02-15
-    # .. toggle_tickets: https://github.com/edx/edx-platform/commit/8f17e6ae9ed76fa75b3caf867b65ccb632cb6870
+    # Allow for restricting enrollment to a specific social auth provider
+    # example value: 'mitx-kerberos'
+    # This will be matched against the beginning portion of the user's social auth uid
+    'RESTRICT_ENROLL_SOCIAL_PROVIDERS': [],
+    # Give a UI to show a student's submission history in a problem by the
+    # Staff Debug tool.
     'ENABLE_STUDENT_HISTORY_VIEW': True,
 
     # Turn on a page that lets staff enter Python code to be run in the
