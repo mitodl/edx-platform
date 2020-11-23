@@ -11,20 +11,20 @@ class CanvasIntegrationConfig(AppConfig):
     """
     Configuration class for Canvas integration app
     """
-    name = u'canvas_integration'
+    name = 'lms.djangoapps.canvas_integration'
 
     plugin_app = {
         PluginURLs.CONFIG: {
             ProjectType.LMS: {
-                PluginURLs.NAMESPACE: u'',
-                PluginURLs.REGEX: u'courses/{}/canvas/api/'.format(COURSE_ID_PATTERN),
-                PluginURLs.RELATIVE_PATH: u'urls',
+                PluginURLs.NAMESPACE: '',
+                PluginURLs.REGEX: 'courses/{}/canvas/api/'.format(COURSE_ID_PATTERN),
+                PluginURLs.RELATIVE_PATH: 'urls',
             }
         },
         PluginSettings.CONFIG: {
             ProjectType.LMS: {
-                SettingsType.PRODUCTION: {PluginSettings.RELATIVE_PATH: u'settings.production'},
-                SettingsType.COMMON: {PluginSettings.RELATIVE_PATH: u'settings.common'},
+                SettingsType.PRODUCTION: {PluginSettings.RELATIVE_PATH: 'settings.production'},
+                SettingsType.COMMON: {PluginSettings.RELATIVE_PATH: 'settings.common'},
             }
         }
     }
