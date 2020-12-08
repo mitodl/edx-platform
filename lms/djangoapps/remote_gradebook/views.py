@@ -3,7 +3,7 @@ HTTP request handler functions for the remote gradebook app
 """
 
 import logging
-import remote_gradebook.tasks
+from lms.djangoapps.remote_gradebook import tasks as remote_gradebook_tasks
 
 from django.db import transaction
 from django.http import HttpResponseForbidden
@@ -221,7 +221,7 @@ def export_assignment_grades_to_rg(request, course_id):
     assignment_name = request.GET.get('assignment_name', '')
     course_id = CourseLocator.from_string(course_id)
     try:
-        remote_gradebook.tasks.run_rgb_grade_export(
+        remote_gradebook_tasks.run_rgb_grade_export(
             request,
             course_id,
             assignment_name,
@@ -252,7 +252,7 @@ def export_assignment_grades_csv(request, course_id):
     course_key = CourseLocator.from_string(course_id)
     assignment_name = request.GET.get('assignment_name', '')
     try:
-        remote_gradebook.tasks.run_assignment_grades_csv_export(request, course_key, assignment_name)
+        remote_gradebook_tasks.run_assignment_grades_csv_export(request, course_key, assignment_name)
         log.info(
             'Exporting grades to CSV for user %s and course %s',
             request.user.username,
