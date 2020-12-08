@@ -181,7 +181,7 @@ def create_assignment_payload(subsection_block):
                 # string representation.
                 else subsection_block.fields["due"].astimezone(pytz.UTC).isoformat()
             ),
-            "submission_types": ["online_upload"],
+            "submission_types": ["none"],
             "published": True,
         }
     }
