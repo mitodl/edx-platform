@@ -182,7 +182,7 @@ def create_assignment_payload(subsection_block):
                 else subsection_block.fields["due"].astimezone(pytz.UTC).isoformat()
             ),
             "submission_types": ["none"],
-            "published": True,
+            "published": False,
         }
     }
 
