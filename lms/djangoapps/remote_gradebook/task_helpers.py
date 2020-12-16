@@ -22,7 +22,8 @@ log = logging.getLogger(__name__)
 def create_datatable_csv(csv_file, datatable):
     """Creates a CSV file from the contents of a datatable."""
     writer = csv.writer(csv_file, dialect='excel', quotechar='"', quoting=csv.QUOTE_ALL)
-    encoded_row = [unicode(s).encode('utf-8') for s in datatable['header']]
+    encoded_row = [s if isinstance(s, str) else str(s).encode('utf-8')
+                   for s in datatable['header']]
     writer.writerow(encoded_row)
     for datarow in datatable['data']:
         # 's' here may be an integer, float (eg score) or string (eg student name)
