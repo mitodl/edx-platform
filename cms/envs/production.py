@@ -567,3 +567,7 @@ if FEATURES.get('ENABLE_CORS_HEADERS'):
     CORS_ALLOW_HEADERS = corsheaders_default_headers + (
         'use-jwt-cookie',
     )
+
+############## xPRO Base URL ############################
+# This should be defined in ansible_vars for the xPRO app
+XPRO_BASE_URL = ENV_TOKENS.get('XPRO_BASE_URL')
