@@ -976,3 +976,7 @@ COMPLETION_VIDEO_COMPLETE_PERCENTAGE = ENV_TOKENS.get('COMPLETION_VIDEO_COMPLETE
                                                       COMPLETION_VIDEO_COMPLETE_PERCENTAGE)
 COMPLETION_VIDEO_COMPLETE_PERCENTAGE = ENV_TOKENS.get('COMPLETION_BY_VIEWING_DELAY_MS',
                                                       COMPLETION_BY_VIEWING_DELAY_MS)
+
+############## xPRO Base URL ############################
+# This should be defined in ansible_vars for the xPRO app
+XPRO_BASE_URL = ENV_TOKENS.get('XPRO_BASE_URL')
