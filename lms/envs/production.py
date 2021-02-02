@@ -980,3 +980,7 @@ COMPLETION_VIDEO_COMPLETE_PERCENTAGE = ENV_TOKENS.get('COMPLETION_BY_VIEWING_DEL
 ############## xPRO Base URL ############################
 # This should be defined in ansible_vars for the xPRO app
 XPRO_BASE_URL = ENV_TOKENS.get('XPRO_BASE_URL')
+LOGIN_REDIRECT_WHITELIST = ENV_TOKENS.get(
+    'LOGIN_REDIRECT_WHITELIST',
+    LOGIN_REDIRECT_WHITELIST
+)
