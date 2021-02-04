@@ -1063,3 +1063,7 @@ SHOW_ACCOUNT_ACTIVATION_CTA = ENV_TOKENS.get('SHOW_ACCOUNT_ACTIVATION_CTA', SHOW
 ############## xPRO Base URL ############################
 # This should be defined in ansible_vars for the xPRO app
 XPRO_BASE_URL = ENV_TOKENS.get('XPRO_BASE_URL')
+LOGIN_REDIRECT_WHITELIST = ENV_TOKENS.get(
+    'LOGIN_REDIRECT_WHITELIST',
+    LOGIN_REDIRECT_WHITELIST
+)
