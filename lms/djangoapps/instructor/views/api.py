@@ -130,7 +130,6 @@ from common.djangoapps.util.views import require_global_staff
 from xmodule.modulestore.django import modulestore
 
 from .. import permissions
-from rapid_response_xblock.utils import get_run_submission_data
 
 from .tools import (
     dump_module_extensions,
@@ -3558,4 +3557,6 @@ def get_rapid_response_report(request, course_id, run_id):  # pylint: disable=un
     Return csv file corresponding to given run_id
     """
     header = ['Date', 'Submitted Answer', 'Username', 'User Email', 'Correct']
+    from rapid_response_xblock.utils import get_run_submission_data
+
     return _return_csv_response('rapid_response_submissions.csv', header, get_run_submission_data(run_id))
