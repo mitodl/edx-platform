@@ -64,7 +64,6 @@ from xmodule.html_module import HtmlBlock
 from xmodule.modulestore.django import modulestore
 from xmodule.tabs import CourseTab
 
-from rapid_response_xblock.utils import get_run_data_for_course
 
 from .tools import get_units_with_due_date, title_or_url
 from .. import permissions
@@ -860,6 +859,7 @@ def is_ecommerce_course(course_key):
 def _section_rapid_response(course_key):
     """Provide data for the rapid response dashboard section """
 
+    from rapid_response_xblock.utils import get_run_data_for_course
     section_data = {
         'section_key': 'rapid_response',
         'section_display_name': _('Rapid Responses'),
