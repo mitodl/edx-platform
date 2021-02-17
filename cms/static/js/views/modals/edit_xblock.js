@@ -172,7 +172,17 @@ define(['jquery', 'underscore', 'backbone', 'gettext', 'js/views/modals/base_mod
                 var self = this,
                     editorView = this.editorView,
                     xblockInfo = this.xblockInfo,
+                    data = null;
+                try {
                     data = editorView.getXBlockFieldData();
+                } catch(e) {
+                    ViewUtils.showErrorMeassage(
+                        "Studio's having trouble while parsing the problem content",
+                        e.message,
+                        10000,
+                    )
+                    return null;
+                }
                 event.preventDefault();
                 if (data) {
                     ViewUtils.runOperationShowingMessage(gettext('Saving'),
