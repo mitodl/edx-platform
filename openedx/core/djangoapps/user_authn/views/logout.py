@@ -47,6 +47,10 @@ class LogoutView(TemplateView):
         """
         target_url = self.request.GET.get('redirect_url') or self.request.GET.get('next')
 
+        # In case no target-url is specified in request, LOGOUT_REDIRECT_URL will be used instead
+        if not target_url and settings.LOGOUT_REDIRECT_URL:
+            target_url = settings.LOGOUT_REDIRECT_URL
+
         #  Some third party apps do not build URLs correctly and send next query param without URL-encoding, resulting
         #  all plus('+') signs interpreted as space(' ') in the process of URL-decoding
         #  for example if we hit on:
