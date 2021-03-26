@@ -45,8 +45,6 @@ TEST_MONGODB_LOG = {
     MONGODB_LOG=TEST_MONGODB_LOG,
     GIT_REPO_DIR=settings.TEST_ROOT / "course_repos_{}".format(uuid4().hex)
 )
-@unittest.skipUnless(settings.FEATURES.get('ENABLE_SYSADMIN_DASHBOARD'),
-                     "ENABLE_SYSADMIN_DASHBOARD not set")
 class TestGitAddCourse(SharedModuleStoreTestCase):
     """
     Tests the git_add_course management command for proper functions.

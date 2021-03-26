@@ -173,18 +173,6 @@ FEATURES = {
     # .. toggle_tickets: None
     'ENABLE_MASQUERADE': True,
 
-    # .. toggle_name: ENABLE_SYSADMIN_DASHBOARD
-    # .. toggle_implementation: DjangoSetting
-    # .. toggle_default: False
-    # .. toggle_description: enables dashboard at /syadmin/ for django staff, for seeing overview of system status, for
-    #   deleting and loading courses, for seeing log of git imports of courseware. Note that some views are noopen_edx
-    # .. toggle_use_cases: open_edx
-    # .. toggle_creation_date: 2013-12-12
-    # .. toggle_target_removal_date: None
-    # .. toggle_warnings: This feature is not supported anymore and should have a target removal date.
-    # .. toggle_tickets: None
-    'ENABLE_SYSADMIN_DASHBOARD': False,  # sysadmin dashboard, to see what courses are loaded, to delete & load courses
-
     'DISABLE_LOGIN_BUTTON': False,  # used in systems where login is automatic, eg MIT SSL
 
     # .. toggle_name: ENABLE_OAUTH2_PROVIDER

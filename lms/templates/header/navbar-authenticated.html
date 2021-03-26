@@ -8,11 +8,12 @@
 from django.urls import reverse
 from django.utils.translation import ugettext as _
 from openedx.core.djangoapps.site_configuration import helpers as configuration_helpers
+from common.djangoapps.util.sysadmin_utils import show_sysadmin_dashboard
 %>
 
 <%
   show_explore_courses = settings.FEATURES.get('COURSES_ARE_BROWSABLE')
-  show_sysadmin_dashboard = settings.FEATURES.get('ENABLE_SYSADMIN_DASHBOARD','') and user.is_staff
+  show_sysadmin = show_sysadmin_dashboard(user)
   self.real_user = getattr(user, 'real_user', user)
 
   support_link = configuration_helpers.get_value('SUPPORT_SITE_LINK', settings.SUPPORT_SITE_LINK)
@@ -52,10 +53,10 @@ from openedx.core.djangoapps.site_configuration import helpers as configuration_
           </a>
       </div>
     % endif
-    % if show_sysadmin_dashboard:
+    % if show_sysadmin:
       <div class="mobile-nav-item hidden-mobile nav-item nav-tab">
         ## Translators: This is short for "System administration".
-        <a class="tab-nav-link" href="${reverse('sysadmin')}">${_("Sysadmin")}</a>
+        <a class="tab-nav-link" href="${reverse('sysadmin:sysadmin')}">${_("Sysadmin")}</a>
       </div>
     % endif
   </div>

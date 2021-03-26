@@ -44,6 +44,7 @@ from lms.djangoapps.certificates.models import (
 from lms.djangoapps.courseware.access import has_access
 from lms.djangoapps.courseware.courses import get_course_by_id, get_studio_url
 from lms.djangoapps.courseware.module_render import get_module_by_usage_id
+from common.djangoapps.util.sysadmin_utils import is_edx_sysadmin_installed
 from lms.djangoapps.discussion.django_comment_client.utils import available_division_schemes, has_forum_access
 from lms.djangoapps.grades.api import is_writable_gradebook_enabled
 from openedx.core.djangoapps.course_groups.cohorts import DEFAULT_COHORT_NAME, get_course_cohorts, is_course_cohorted
@@ -426,7 +427,7 @@ def _section_course_info(course, access):
         ).format(dashboard_link=dashboard_link)
         section_data['enrollment_message'] = message
 
-    if settings.FEATURES.get('ENABLE_SYSADMIN_DASHBOARD'):
+    if is_edx_sysadmin_installed():
         section_data['detailed_gitlogs_url'] = reverse(
             'gitlogs_detail',
             kwargs={'course_id': six.text_type(course_key)}

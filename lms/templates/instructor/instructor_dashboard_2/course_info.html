@@ -2,6 +2,7 @@
 <%!
 from django.utils.translation import ugettext as _
 from openedx.core.djangolib.markup import HTML, Text
+from common.djangoapps.util.sysadmin_utils import show_sysadmin_dashboard
 %>
 
 %if settings.FEATURES.get('DISPLAY_ANALYTICS_ENROLLMENTS') or section_data.get('enrollment_message'):
@@ -114,7 +115,7 @@ from openedx.core.djangolib.markup import HTML, Text
     </li>
   </ul>
 
-  %if settings.FEATURES.get('ENABLE_SYSADMIN_DASHBOARD', '') and user.is_staff:
+  %if show_sysadmin_dashboard(user):
       <p>
         ## Translators: git is a version-control system; see http://git-scm.com/about
         ${Text(_("View detailed Git import logs for this course {link_start}by clicking here{link_end}.")).format(
