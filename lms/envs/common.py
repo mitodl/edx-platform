@@ -262,6 +262,11 @@ FEATURES = {
     # .. toggle_tickets: https://openedx.atlassian.net/browse/OSPR-1814
     'HIDE_DASHBOARD_COURSES_UNTIL_ACTIVATED': False,
 
+     # Allow for restricting enrollment to a specific social auth provider
+    # example value: 'mitx-kerberos'
+    # This will be matched against the beginning portion of the user's social auth uid
+    'RESTRICT_ENROLL_SOCIAL_PROVIDERS': [],
+
     # .. toggle_name: FEATURES['ENABLE_STUDENT_HISTORY_VIEW']
     # .. toggle_implementation: DjangoSetting
     # .. toggle_default: True
