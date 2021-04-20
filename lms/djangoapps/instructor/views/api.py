@@ -566,7 +566,9 @@ def create_and_enroll_user(email, username, name, country, password, course_id, 
     except Exception as ex:  # pylint: disable=broad-except
         log.exception(type(ex).__name__)
         errors.append({
-            'username': username, 'email': email, 'response': type(ex).__name__,
+            'username': username,
+            'email': email,
+            'response': type(ex).__name__
         })
     else:
         try:
@@ -2156,6 +2158,8 @@ def _list_instructor_tasks(request, course_id):
 
     Internal function with common code for both DRF and and tradition views.
     """
+    include_remote_gradebook = request.GET.get('include_remote_gradebook') is not None
+    include_canvas = request.GET.get('include_canvas') is not None
     course_id = CourseKey.from_string(course_id)
     params = getattr(request, 'query_params', request.POST)
     problem_location_str = strip_if_string(params.get('problem_location_str', False))
@@ -2179,6 +2183,16 @@ def _list_instructor_tasks(request, course_id):
         else:
             # Specifying for single problem's history
             tasks = task_api.get_instructor_task_history(course_id, module_state_key)
+    elif include_remote_gradebook:
+        tasks = task_api.get_running_instructor_rgb_tasks(
+            course_id,
+            user=request.user
+        )
+    elif include_canvas:
+        tasks = task_api.get_running_instructor_canvas_tasks(
+            course_id,
+            user=request.user
+        )
     else:
         # If no problem or student, just get currently running tasks
         tasks = task_api.get_running_instructor_tasks(course_id)

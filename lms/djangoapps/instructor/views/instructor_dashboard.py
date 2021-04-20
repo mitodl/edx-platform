@@ -148,6 +148,12 @@ def instructor_dashboard_2(request, course_id):  # lint-amnesty, pylint: disable
     if access['data_researcher']:
         sections.append(_section_data_download(course, access))
 
+    if settings.FEATURES.get('ENABLE_INSTRUCTOR_REMOTE_GRADEBOOK_CONTROLS', False):
+        sections.append(_section_remote_gradebook(course))
+
+    if settings.FEATURES.get("ENABLE_CANVAS_INTEGRATION", False):
+        sections.append(_section_canvas_integration(course))
+
     analytics_dashboard_message = None
     if show_analytics_dashboard_message(course_key) and (access['staff'] or access['instructor']):
         # Construct a URL to the external analytics dashboard
@@ -630,6 +636,82 @@ def _section_data_download(course, access):
     if not access.get('data_researcher'):
         section_data['is_hidden'] = True
     return section_data
+
+
+def _section_remote_gradebook(course):
+    """ Provide data for the corresponding dashboard section """
+    rg_course_setting = course.remote_gradebook or {}
+    rg_name = rg_course_setting.get('name') or settings.REMOTE_GRADEBOOK.get('DEFAULT_NAME')
+    section_data = {
+        'section_key': 'remote_gradebook',
+        'section_display_name': _('Remote Gradebook'),
+        'course': course,
+        'remote_gradebook_name': rg_name,
+        'get_remote_gradebook_sections_url': reverse(
+            'get_remote_gradebook_sections', kwargs={'course_id': course.id}
+        ),
+        'get_assignment_choices_url': reverse(
+            'get_assignment_choices', kwargs={'course_id': course.id}
+        ),
+        'get_non_staff_enrollments_url': reverse(
+            'get_non_staff_enrollments', kwargs={'course_id': course.id}
+        ),
+        'list_remote_enrolled_students_url': reverse(
+            'list_remote_enrolled_students', kwargs={'course_id': course.id}
+        ),
+        'list_remote_students_in_section_url': reverse(
+            'list_remote_students_in_section', kwargs={'course_id': course.id}
+        ),
+        'add_enrollments_using_remote_gradebook_url': reverse(
+            'add_enrollments_using_remote_gradebook', kwargs={'course_id': course.id}
+        ),
+        'list_remote_assignments_url': reverse(
+            'list_remote_assignments', kwargs={'course_id': course.id}
+        ),
+        'display_assignment_grades_url': reverse(
+            'display_assignment_grades', kwargs={'course_id': course.id}
+        ),
+        'export_assignment_grades_to_rg_url': reverse(
+            'export_assignment_grades_to_rg', kwargs={'course_id': course.id}
+        ),
+        'export_assignment_grades_csv_url': reverse(
+            'export_assignment_grades_csv', kwargs={'course_id': course.id}
+        ),
+        'list_instructor_tasks_url': '{}?include_remote_gradebook=true'.format(
+            reverse(
+                'list_instructor_tasks', kwargs={'course_id': course.id}
+            )
+        ),
+        'list_report_downloads_url': reverse(
+            'list_report_downloads', kwargs={'course_id': course.id}
+        ),
+    }
+    return section_data
+
+
+def _section_canvas_integration(course):
+    """ Provide data for the canvas dashboard section """
+    return {
+        'section_key': 'canvas_integration',
+        'section_display_name': _('Canvas'),
+        'course': course,
+        'get_assignment_choices_url': reverse(
+            'get_assignment_choices', kwargs={'course_id': course.id}
+        ),
+        'add_canvas_enrollments_url': reverse(
+            'add_canvas_enrollments', kwargs={'course_id': course.id}
+        ),
+        "list_canvas_enrollments_url": reverse("list_canvas_enrollments", kwargs={"course_id": course.id}),
+        "list_canvas_assignments_url": reverse("list_canvas_assignments", kwargs={"course_id": course.id}),
+        "list_canvas_grades_url": reverse("list_canvas_grades", kwargs={"course_id": course.id}),
+        'list_instructor_tasks_url': '{}?include_canvas=true'.format(reverse(
+            'list_instructor_tasks',
+            kwargs={'course_id': course.id}
+        )),
+        "push_edx_grades_url": reverse(
+            "push_edx_grades", kwargs={"course_id": course.id}
+        ),
+    }
 
 
 def null_applicable_aside_types(block):  # pylint: disable=unused-argument
