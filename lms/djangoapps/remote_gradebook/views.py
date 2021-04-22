@@ -6,6 +6,7 @@ import logging
 from lms.djangoapps.remote_gradebook import tasks as remote_gradebook_tasks
 
 from django.db import transaction
+from django.http import HttpResponseForbidden
 from django.utils.translation import ugettext as _
 from django.views.decorators.cache import cache_control
 from django.views.decorators.csrf import ensure_csrf_cookie
@@ -15,14 +16,14 @@ from opaque_keys.edx.keys import CourseKey
 
 from lms.djangoapps.instructor.views.api import require_course_permission
 from lms.djangoapps.instructor import permissions
-import remote_gradebook.tasks
-from remote_gradebook.api import (
+from lms.djangoapps import remote_gradebook.tasks
+from lms.djangoapps.remote_gradebook.api import (
     enroll_emails_in_course,
     get_enrolled_non_staff_users,
     unenroll_non_staff_users_in_course,
     get_course_assignment_choices,
 )
-from remote_gradebook.utils import (
+from lms.djangoapps.remote_gradebook.utils import (
     get_assignment_grade_datatable,
     get_remote_gradebook_datatable_resp,
 )
