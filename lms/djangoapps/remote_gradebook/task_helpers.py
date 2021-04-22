@@ -4,7 +4,7 @@ Helper functions for remote gradebook tasks
 
 import logging
 import csv
-from StringIO import StringIO
+from io import StringIO
 from datetime import datetime
 from time import time
 
@@ -32,7 +32,7 @@ def create_datatable_csv(csv_file, datatable):
             # object out of it will fail unless we pass in an encoding to
             # the constructor. But we can't do that across the board,
             # because s is often a numeric type. So just do this.
-            s if isinstance(s, str) else unicode(s).encode('utf-8')
+            s if isinstance(s, str) else str(s).encode('utf-8')
             for s in datarow
         ]
         writer.writerow(encoded_row)
