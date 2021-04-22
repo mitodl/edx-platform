@@ -16,7 +16,7 @@ from opaque_keys.edx.keys import CourseKey
 
 from lms.djangoapps.instructor.views.api import require_course_permission
 from lms.djangoapps.instructor import permissions
-from lms.djangoapps import remote_gradebook.tasks
+import lms.djangoapps.remote_gradebook.tasks
 from lms.djangoapps.remote_gradebook.api import (
     enroll_emails_in_course,
     get_enrolled_non_staff_users,
@@ -27,10 +27,10 @@ from lms.djangoapps.remote_gradebook.utils import (
     get_assignment_grade_datatable,
     get_remote_gradebook_datatable_resp,
 )
-from courseware.courses import get_course_by_id
-from util.json_request import JsonResponse
-from student.models import CourseEnrollment
-from instructor_task.api_helper import AlreadyRunningError
+from lms.djangoapps.courseware.courses import get_course_by_id
+from common.djangoapps.util.json_request import JsonResponse
+from common.djangoapps.student.models import CourseEnrollment
+from lms.djangoapps.instructor_task.api_helper import AlreadyRunningError
 
 log = logging.getLogger(__name__)
 
