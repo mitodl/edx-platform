@@ -2,9 +2,9 @@
 API functionality for the remote gradebook app
 """
 from django.contrib.auth.models import User
-from courseware.access import has_access
-from grades.context import grading_context_for_course
-from student.models import CourseEnrollmentAllowed, CourseEnrollment
+from lms.djangoapps.courseware.access import has_access
+from lms.djangoapps.grades.context import grading_context_for_course
+from common.djangoapps.student.models import CourseEnrollmentAllowed, CourseEnrollment
 
 
 def enroll_emails_in_course(emails, course_key):
