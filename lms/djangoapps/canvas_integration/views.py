@@ -10,13 +10,13 @@ from django.views.decorators.http import require_POST
 from opaque_keys.edx.locator import CourseLocator
 
 from lms.djangoapps.canvas_integration.client import CanvasClient
-from courseware.courses import get_course_by_id
+from lms.djangoapps.courseware.courses import get_course_by_id
 from lms.djangoapps.canvas_integration import tasks
 from lms.djangoapps.instructor_task.api_helper import AlreadyRunningError
 from lms.djangoapps.instructor.views.api import require_course_permission
 from lms.djangoapps.instructor import permissions
-from student.models import CourseEnrollment, CourseEnrollmentAllowed
-from util.json_request import JsonResponse
+from common.djangoapps.student.models import CourseEnrollment, CourseEnrollmentAllowed
+from common.djangoapps.util.json_request import JsonResponse
 
 
 log = logging.getLogger(__name__)
