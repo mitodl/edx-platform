@@ -4,11 +4,11 @@ from collections import defaultdict
 
 from opaque_keys.edx.locator import CourseLocator
 
-from courseware.courses import get_course_by_id
+from lms.djangoapps.courseware.courses import get_course_by_id
 from lms.djangoapps.grades.course_grade_factory import CourseGradeFactory
-from remote_gradebook.api import enroll_emails_in_course, get_enrolled_non_staff_users, course_graded_items
-from student.models import CourseEnrollment
-from canvas_integration.client import CanvasClient, create_assignment_payload, update_grade_payload_kv
+from lms.djangoapps.remote_gradebook.api import enroll_emails_in_course, get_enrolled_non_staff_users, course_graded_items
+from common.djangoapps.student.models import CourseEnrollment
+from lms.djangoapps.canvas_integration.client import CanvasClient, create_assignment_payload, update_grade_payload_kv
 
 log = logging.getLogger(__name__)
 

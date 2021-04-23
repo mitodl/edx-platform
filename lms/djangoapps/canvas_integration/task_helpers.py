@@ -3,9 +3,9 @@ Helper functions for canvas integration tasks
 """
 from time import time
 
-from canvas_integration import api
-from courseware.courses import get_course_by_id
-from instructor_task.tasks_helper.runner import TaskProgress
+from lms.djangoapps.canvas_integration import api
+from lms.djangoapps.courseware.courses import get_course_by_id
+from lms.djangoapps.instructor_task.tasks_helper.runner import TaskProgress
 
 
 def sync_canvas_enrollments(_xmodule_instance_args, _entry_id, course_id, task_input, action_name):

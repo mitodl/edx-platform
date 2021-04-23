@@ -12,7 +12,7 @@ from django.utils.translation import ugettext as _
 from openedx.core.djangolib.markup import HTML
 
 from lms.djangoapps.grades.course_grade_factory import CourseGradeFactory
-from student.models import CourseEnrollment
+from common.djangoapps.student.models import CourseEnrollment
 
 log = logging.getLogger(__name__)
 
