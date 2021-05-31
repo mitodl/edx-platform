@@ -657,8 +657,7 @@ class LoncapaProblem(object):
         if isinstance(current_answer, list):
             # Multiple answers. This case happens e.g. in multiple choice problems
             answer_text = ", ".join(
-                self.find_answer_text(answer_id, answer) or 'No Answer Recorded'
-                for answer in current_answer
+                self.find_answer_text(answer_id, answer) for answer in current_answer
             )
 
         elif isinstance(current_answer, six.string_types) and current_answer.startswith('choice_'):
@@ -668,13 +667,17 @@ class LoncapaProblem(object):
                 answer_id=answer_id,
                 choice_number=current_answer
             ))
-            if len(elems) == 1:
+            if len(elems) == 0:
+                log.warning("Answer Text Missing for answer id: %s and choice number: %s", answer_id, current_answer)
+                answer_text = "Answer Text Missing"
+            elif len(elems) == 1:
                 choicegroup = elems[0].getparent()
                 input_cls = inputtypes.registry.get_class_for_tag(choicegroup.tag)
                 choices_map = dict(input_cls.extract_choices(choicegroup, self.capa_system.i18n, text_only=True))
-                answer_text = choices_map[current_answer]
+                answer_text = choices_map.get(current_answer, "Answer Text Missing")
             else:
-                answer_text = 'Answer Text Missing'
+                log.warning("Multiple answers found for answer id: %s and choice number: %s", answer_id, current_answer)
+                answer_text = "Multiple answers found"
 
         elif isinstance(current_answer, six.string_types):
             # Already a string with the answer
@@ -683,7 +686,7 @@ class LoncapaProblem(object):
         else:
             raise NotImplementedError()
 
-        return answer_text
+        return answer_text or "Answer Text Missing"
 
     def do_targeted_feedback(self, tree):
         """
