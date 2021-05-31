@@ -101,14 +101,14 @@
              * @param message The message to show.
              * @param timeInterval The time interval to hide the notification.
              */
-            showErrorMeassage = function showErrorMeassage(heading, message, timeInterval){
+            showErrorMeassage = function(heading, message, timeInterval) {
                 var errorNotificationView = new NotificationView.Error({
                     title: gettext(heading),
-                    message: gettext(message),
+                    message: gettext(message)
                 });
                 errorNotificationView.show();
 
-                setTimeout(function(){ errorNotificationView.hide(); }, timeInterval);
+                setTimeout(function() { errorNotificationView.hide(); }, timeInterval);
             };
             /**
              * Wraps a Backbone event callback to disable the event's target element.

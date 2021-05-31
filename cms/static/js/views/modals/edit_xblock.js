@@ -177,10 +177,11 @@ define(['jquery', 'underscore', 'backbone', 'gettext', 'js/views/modals/base_mod
                     data = editorView.getXBlockFieldData();
                 } catch(e) {
                     ViewUtils.showErrorMeassage(
-                        "Studio's having trouble while parsing the problem content",
+                        gettext("Studio's having trouble while parsing the problem content"),
                         e.message,
-                        10000,
-                    )
+                        10000
+                    );
+                    ViewUtils.setScrollOffset(editorView.$el, 100);
                     return null;
                 }
                 event.preventDefault();
