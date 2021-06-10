@@ -151,7 +151,7 @@ def instructor_dashboard_2(request, course_id):  # lint-amnesty, pylint: disable
     if settings.FEATURES.get('ENABLE_INSTRUCTOR_REMOTE_GRADEBOOK_CONTROLS', False):
         sections.append(_section_remote_gradebook(course))
 
-    if settings.FEATURES.get("ENABLE_CANVAS_INTEGRATION", False):
+    if settings.FEATURES.get("ENABLE_CANVAS_INTEGRATION", False) and course.canvas_course_id:
         sections.append(_section_canvas_integration(course))
 
     analytics_dashboard_message = None
