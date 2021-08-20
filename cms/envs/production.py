@@ -612,6 +612,6 @@ COURSE_OLX_VALIDATION_IGNORE_LIST = ENV_TOKENS.get(
 ################# show account activate cta after register ########################
 SHOW_ACCOUNT_ACTIVATION_CTA = ENV_TOKENS.get('SHOW_ACCOUNT_ACTIVATION_CTA', SHOW_ACCOUNT_ACTIVATION_CTA)
 
-############## xPRO Base URL ############################
-# This should be defined in ansible_vars for the xPRO app
-XPRO_BASE_URL = ENV_TOKENS.get('XPRO_BASE_URL')
+############## Marketing Site Base URL ############################
+# This should be defined in ansible_vars for the marketing app
+MARKETING_SITE_BASE_URL = ENV_TOKENS.get('MARKETING_SITE_BASE_URL')
