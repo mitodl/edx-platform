@@ -1321,6 +1321,8 @@ USAGE_ID_PATTERN = r'(?P<usage_id>(?:i4x://?[^/]+/[^/]+/[^/]+/[^@]+(?:@[^/]+)?)|
 USERNAME_REGEX_PARTIAL = r'[\w .@_+-]+'
 USERNAME_PATTERN = fr'(?P<username>{USERNAME_REGEX_PARTIAL})'
 
+# New variable named LOGOUT_REDIRECT_URL which can be used as default redirection-url instead of dashboard.
+LOGOUT_REDIRECT_URL = ''
 
 ############################## EVENT TRACKING #################################
 LMS_SEGMENT_KEY = None
