@@ -50,7 +50,8 @@
             enableColumnReorder: false,
             autoHeight: true,
             rowHeight: 100,
-            forceFitColumns: true
+            forceFitColumns: true,
+            enableTextSelectionOnCells: true
         };
         columns = [
             {
@@ -97,7 +98,14 @@
         */
 
                 name: gettext('Submitted'),
-                minWidth: 120
+                minWidth: 120,
+                formatter: function(row, cell, value) {
+                  if (!value) {
+                    return value
+                  }
+                  var fromNow = moment(value).fromNow()
+                  return value.concat("<br />(", fromNow, ")")
+                }
             }, {
                 id: 'duration_sec',
                 field: 'duration_sec',
@@ -491,7 +499,8 @@
                 enableCellNavigation: true,
                 enableColumnReorder: false,
                 rowHeight: 30,
-                forceFitColumns: true
+                forceFitColumns: true,
+                enableTextSelectionOnCells: true
             };
             columns = [
                 {

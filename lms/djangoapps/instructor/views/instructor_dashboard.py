@@ -148,6 +148,9 @@ def instructor_dashboard_2(request, course_id):  # lint-amnesty, pylint: disable
     if access['data_researcher']:
         sections.append(_section_data_download(course, access))
 
+    if settings.FEATURES.get("ENABLE_CANVAS_INTEGRATION", False) and course.canvas_course_id:
+        sections.append(_section_canvas_integration(course))
+
     analytics_dashboard_message = None
     if show_analytics_dashboard_message(course_key) and (access['staff'] or access['instructor']):
         # Construct a URL to the external analytics dashboard
@@ -630,6 +633,28 @@ def _section_data_download(course, access):
     if not access.get('data_researcher'):
         section_data['is_hidden'] = True
     return section_data
+
+
+def _section_canvas_integration(course):
+    """ Provide data for the canvas dashboard section """
+    return {
+        'section_key': 'canvas_integration',
+        'section_display_name': _('Canvas'),
+        'course': course,
+        'add_canvas_enrollments_url': reverse(
+            'add_canvas_enrollments', kwargs={'course_id': course.id}
+        ),
+        "list_canvas_enrollments_url": reverse("list_canvas_enrollments", kwargs={"course_id": course.id}),
+        "list_canvas_assignments_url": reverse("list_canvas_assignments", kwargs={"course_id": course.id}),
+        "list_canvas_grades_url": reverse("list_canvas_grades", kwargs={"course_id": course.id}),
+        'list_instructor_tasks_url': '{}?include_canvas=true'.format(reverse(
+            'list_instructor_tasks',
+            kwargs={'course_id': course.id}
+        )),
+        "push_edx_grades_url": reverse(
+            "push_edx_grades", kwargs={"course_id": course.id}
+        ),
+    }
 
 
 def null_applicable_aside_types(block):  # pylint: disable=unused-argument

@@ -6,10 +6,11 @@ already been submitted, filtered either by running state or input
 arguments.
 
 """
-
+import datetime
 
 import hashlib
 from collections import Counter
+from pytz import UTC
 
 from celery.states import READY_STATES
 
@@ -66,6 +67,34 @@ def get_running_instructor_tasks(course_id):
     for state in READY_STATES:
         instructor_tasks = instructor_tasks.exclude(task_state=state)
     return instructor_tasks.order_by('-id')
+
+
+def _get_filtered_instructor_tasks(course_id, user, task_types):
+    """
+    Returns a filtered query of InstructorTask to use for listing canvas tasks
+    """
+    instructor_tasks = get_running_instructor_tasks(course_id)
+    now = datetime.datetime.now(UTC)
+    filtered_tasks = InstructorTask.objects.filter(
+        course_id=course_id,
+        task_type__in=task_types,
+        updated__lte=now,
+        updated__gte=now - datetime.timedelta(days=2),
+        requester=user
+    ).order_by('-updated')
+
+    return (instructor_tasks | filtered_tasks).distinct()[0:3]
+
+
+def get_running_instructor_canvas_tasks(course_id, user):
+    """
+    Returns a query of InstructorTask objects of running tasks for a given course
+    including canvas-specific tasks.
+    """
+    # Inline import because we will install the plugin separately
+    from ol_openedx_canvas_integration.constants import CANVAS_TASK_TYPES  # pylint: disable=import-error
+
+    return _get_filtered_instructor_tasks(course_id, user, CANVAS_TASK_TYPES)
 
 
 def get_instructor_task_history(course_id, usage_key=None, student=None, task_type=None):
