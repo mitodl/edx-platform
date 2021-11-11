@@ -148,7 +148,7 @@ def instructor_dashboard_2(request, course_id):  # lint-amnesty, pylint: disable
     if access['data_researcher']:
         sections.append(_section_data_download(course, access))
 
-    if settings.FEATURES.get("ENABLE_CANVAS_INTEGRATION", False) and course.canvas_course_id:
+    if 'ol_openedx_canvas_integration.app.CanvasIntegrationConfig' in settings.INSTALLED_APPS and course.canvas_course_id:  # pylint: disable=line-too-long
         sections.append(_section_canvas_integration(course))
 
     analytics_dashboard_message = None
