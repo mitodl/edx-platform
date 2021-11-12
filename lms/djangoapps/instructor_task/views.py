@@ -198,8 +198,8 @@ def get_task_completion_info(instructor_task):  # lint-amnesty, pylint: disable=
     elif course_id is not None:
         # this reports on actions for a course as a whole
         results = task_output.get('results', {})
-        assignments_count = len(results.get("assignments", {}))
-        grades_count = len(results.get("grades", {}))
+        assignments_count = results.get("assignments", 0)
+        grades_count = results.get("grades", 0)
 
         msg_format = _("{grades_count} grades and {assignments_count} assignments updated or created").format(
             grades_count=grades_count,
