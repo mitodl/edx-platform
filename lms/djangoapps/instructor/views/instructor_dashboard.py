@@ -21,6 +21,7 @@ from django.views.decorators.cache import cache_control
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_POST
 from edx_proctoring.api import does_backend_support_onboarding
+from edx_django_utils.plugins import get_plugins_view_context
 from edx_when.api import is_enabled_for_course
 from opaque_keys import InvalidKeyError
 from opaque_keys.edx.keys import CourseKey
@@ -54,6 +55,7 @@ from lms.djangoapps.grades.api import is_writable_gradebook_enabled
 from openedx.core.djangoapps.course_groups.cohorts import DEFAULT_COHORT_NAME, get_course_cohorts, is_course_cohorted
 from openedx.core.djangoapps.discussions.config.waffle_utils import legacy_discussion_experience_enabled
 from openedx.core.djangoapps.django_comment_common.models import FORUM_ROLE_ADMINISTRATOR, CourseDiscussionSettings
+from openedx.core.djangoapps.plugins.constants import ProjectType
 from openedx.core.djangoapps.site_configuration import helpers as configuration_helpers
 from openedx.core.djangoapps.verified_track_content.models import VerifiedTrackCohortedCourse
 from openedx.core.djangolib.markup import HTML, Text
@@ -236,6 +238,17 @@ def instructor_dashboard_2(request, course_id):  # lint-amnesty, pylint: disable
     )
 
     certificate_invalidations = CertificateInvalidation.get_certificate_invalidations(course_key)
+
+    # Add Rapid Responses tab if plugin context is available
+    rapid_response_plugin_view = 'ol_openedx_rapid_response_reports'
+    context_from_plugins = get_plugins_view_context(
+        ProjectType.LMS,
+        rapid_response_plugin_view,
+        {"course_key": course_key}
+    )
+    rapid_response_plugin_context = context_from_plugins['plugins'].get(rapid_response_plugin_view)
+    if rapid_response_plugin_context:
+        sections.append(rapid_response_plugin_context)
 
     context = {
         'course': course,
