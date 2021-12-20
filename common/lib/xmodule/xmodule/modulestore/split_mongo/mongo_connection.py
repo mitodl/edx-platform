@@ -148,7 +148,11 @@ def structure_from_mongo(structure, course_context=None):
             for the course that this data is being processed for.
     """
     with TIMER.timer('structure_from_mongo', course_context) as tagger:
-        tagger.measure('blocks', len(structure['blocks']))
+        if structure and structure.get('blocks'):
+            block_length = len(structure['blocks'])
+        else:
+            block_length = 0
+        tagger.measure("blocks", block_length)
 
         structure['root'] = BlockKey(*structure['root'])
         new_blocks = {}
@@ -170,7 +174,11 @@ def structure_to_mongo(structure, course_context=None):
         directly into mongo.
     """
     with TIMER.timer('structure_to_mongo', course_context) as tagger:
-        tagger.measure('blocks', len(structure['blocks']))
+        if structure and structure.get('blocks'):
+            block_length = len(structure['blocks'])
+        else:
+            block_length = 0
+        tagger.measure("blocks", block_length)
 
         new_structure = dict(structure)
         new_structure['blocks'] = []
@@ -353,7 +361,11 @@ class MongoConnection:
         Insert a new structure into the database.
         """
         with TIMER.timer("insert_structure", course_context) as tagger:
-            tagger.measure("blocks", len(structure["blocks"]))
+            if structure and structure.get('blocks'):
+                block_length = len(structure['blocks'])
+            else:
+                block_length = 0
+            tagger.measure("blocks", block_length)
             self.structures.insert_one(structure_to_mongo(structure, course_context))
 
     def get_course_index(self, key, ignore_case=False):
