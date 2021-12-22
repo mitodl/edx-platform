@@ -71,7 +71,7 @@ import six
 import social_django
 from django.conf import settings
 from django.contrib.auth.models import User  # lint-amnesty, pylint: disable=imported-auth-user
-from django.contrib.auth import logout
+from django.contrib.auth import logout  # lint-amnesty, pylint: disable=unused-import
 from django.core.mail.message import EmailMessage
 from django.http import HttpResponseBadRequest
 from django.shortcuts import redirect
@@ -98,7 +98,7 @@ from common.djangoapps.third_party_auth.utils import (
     user_exists,
 )
 from common.djangoapps.track import segment
-from common.djangoapps.util.json_request import JsonResponse
+from common.djangoapps.util.json_request import JsonResponse  # lint-amnesty, pylint: disable=unused-import
 
 from . import provider
 
