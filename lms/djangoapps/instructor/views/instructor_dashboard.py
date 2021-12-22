@@ -23,7 +23,6 @@ from django.views.decorators.http import require_POST
 from edx_proctoring.api import does_backend_support_onboarding
 from edx_django_utils.plugins import get_plugins_view_context
 from edx_when.api import is_enabled_for_course
-from edx_django_utils.plugins import get_plugins_view_context
 from opaque_keys import InvalidKeyError
 from opaque_keys.edx.keys import CourseKey
 from xblock.field_data import DictFieldData
