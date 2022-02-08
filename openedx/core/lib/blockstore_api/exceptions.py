@@ -23,7 +23,15 @@ class DraftNotFound(NotFound):
     pass
 
 
+class BundleVersionNotFound(NotFound):
+    pass
+
+
 class BundleFileNotFound(NotFound):
+    pass
+
+
+class DraftHasNoChangesToCommit(BlockstoreException):
     pass
 
 

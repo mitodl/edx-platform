@@ -4,6 +4,8 @@
 #
 #    make upgrade
 #
+-e git+https://github.com/open-craft/blockstore.git@jill/symbolist/blockstore-as-app#egg=blockstore==1.2.0
+    # via -r requirements/edx/base.txt
 -e common/lib/capa
     # via
     #   -r requirements/edx/base.txt
@@ -71,6 +73,7 @@ attrs==21.2.0
     # via
     #   -r requirements/edx/base.txt
     #   aiohttp
+    #   blockstore
     #   edx-ace
     #   openedx-events
     #   outcome
@@ -234,6 +237,7 @@ distlib==0.3.3
     # via
     #   -c requirements/edx/../constraints.txt
     #   -r requirements/edx/base.txt
+    #   blockstore
     #   django-appconf
     #   django-classy-tags
     #   django-config-models
@@ -328,6 +332,10 @@ django-crum==0.7.9
     #   edx-rbac
     #   edx-toggles
     #   super-csv
+django-environ==0.8.1
+    # via
+    #   -r requirements/edx/base.txt
+    #   blockstore
 django-fernet-fields==0.6
     # via
     #   -r requirements/edx/base.txt
@@ -336,6 +344,7 @@ django-fernet-fields==0.6
 django-filter==21.1
     # via
     #   -r requirements/edx/base.txt
+    #   blockstore
     #   edx-enterprise
     #   lti-consumer-xblock
 django-ipware==4.0.0
@@ -422,6 +431,7 @@ django-user-tasks==2.1.0
 django-waffle==2.2.1
     # via
     #   -r requirements/edx/base.txt
+    #   blockstore
     #   edx-django-utils
     #   edx-drf-extensions
     #   edx-enterprise
@@ -435,8 +445,10 @@ django-webpack-loader==0.7.0
 djangorestframework==3.12.4
     # via
     #   -r requirements/edx/base.txt
+    #   blockstore
     #   django-config-models
     #   django-user-tasks
+    #   djangorestframework-expander
     #   drf-jwt
     #   drf-yasg
     #   edx-api-doc-tools
@@ -449,6 +461,10 @@ djangorestframework==3.12.4
     #   edx-submissions
     #   ora2
     #   super-csv
+djangorestframework-expander==0.2.3
+    # via
+    #   -r requirements/edx/base.txt
+    #   blockstore
 djangorestframework-xml==2.0.0
     # via
     #   -r requirements/edx/base.txt
@@ -936,6 +952,10 @@ py2neo==2021.2.3
     # via
     #   -c requirements/edx/../constraints.txt
     #   -r requirements/edx/base.txt
+pyblake2==1.1.2
+    # via
+    #   -r requirements/edx/base.txt
+    #   blockstore
 pycodestyle==2.8.0
     # via -r requirements/edx/testing.in
 pycountry==20.7.3
@@ -1091,6 +1111,7 @@ pytz==2021.3
     # via
     #   -r requirements/edx/base.txt
     #   babel
+    #   blockstore
     #   celery
     #   django
     #   django-ses
@@ -1268,6 +1289,7 @@ soupsieve==2.2.1
 sqlparse==0.4.2
     # via
     #   -r requirements/edx/base.txt
+    #   blockstore
     #   django
 staff-graded-xblock==1.6.0
     # via -r requirements/edx/base.txt

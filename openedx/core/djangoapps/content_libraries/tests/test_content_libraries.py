@@ -14,6 +14,7 @@ from rest_framework.test import APITestCase
 
 from openedx.core.djangoapps.content_libraries.libraries_index import LibraryBlockIndexer, ContentLibraryIndexer
 from openedx.core.djangoapps.content_libraries.tests.base import (
+    ContentLibrariesRestApiBlockstoreServiceTest,
     ContentLibrariesRestApiTest,
     elasticsearch_test,
     URL_BLOCK_METADATA_URL,
@@ -27,8 +28,7 @@ from common.djangoapps.student.tests.factories import UserFactory
 
 
 @ddt.ddt
-@elasticsearch_test
-class ContentLibrariesTest(ContentLibrariesRestApiTest):
+class ContentLibrariesTestMixin:
     """
     General tests for Blockstore-based Content Libraries
 
@@ -864,6 +864,26 @@ class ContentLibrariesTest(ContentLibrariesRestApiTest):
             assert types[0]['block_type'] == library_type
         else:
             assert len(types) > 1
+
+
+@elasticsearch_test
+class ContentLibrariesBlockstoreServiceTest(
+    ContentLibrariesTestMixin,
+    ContentLibrariesRestApiBlockstoreServiceTest,
+):
+    """
+    General tests for Blockstore-based Content Libraries, using the standalone Blockstore service.
+    """
+
+
+@elasticsearch_test
+class ContentLibrariesTest(
+    ContentLibrariesTestMixin,
+    ContentLibrariesRestApiTest,
+):
+    """
+    General tests for Blockstore-based Content Libraries, using the installed Blockstore app.
+    """
 
 
 @ddt.ddt

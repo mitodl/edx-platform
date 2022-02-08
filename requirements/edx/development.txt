@@ -4,6 +4,8 @@
 #
 #    make upgrade
 #
+-e git+https://github.com/open-craft/blockstore.git@jill/symbolist/blockstore-as-app#egg=blockstore==1.2.0
+    # via -r requirements/edx/testing.txt
 -e common/lib/capa
     # via
     #   -r requirements/edx/testing.txt
@@ -76,6 +78,7 @@ attrs==21.2.0
     # via
     #   -r requirements/edx/testing.txt
     #   aiohttp
+    #   blockstore
     #   edx-ace
     #   jsonschema
     #   openedx-events
@@ -247,6 +250,7 @@ django==3.2.12
     # via
     #   -c requirements/edx/../constraints.txt
     #   -r requirements/edx/testing.txt
+    #   blockstore
     #   django-appconf
     #   django-classy-tags
     #   django-config-models
@@ -352,6 +356,7 @@ django-fernet-fields==0.6
 django-filter==21.1
     # via
     #   -r requirements/edx/testing.txt
+    #   blockstore
     #   edx-enterprise
     #   lti-consumer-xblock
 django-ipware==4.0.0
@@ -438,6 +443,7 @@ django-user-tasks==2.1.0
 django-waffle==2.2.1
     # via
     #   -r requirements/edx/testing.txt
+    #   blockstore
     #   edx-django-utils
     #   edx-drf-extensions
     #   edx-enterprise
@@ -451,8 +457,10 @@ django-webpack-loader==0.7.0
 djangorestframework==3.12.4
     # via
     #   -r requirements/edx/testing.txt
+    #   blockstore
     #   django-config-models
     #   django-user-tasks
+    #   djangorestframework-expander
     #   drf-jwt
     #   drf-yasg
     #   edx-api-doc-tools
@@ -465,6 +473,8 @@ djangorestframework==3.12.4
     #   edx-submissions
     #   ora2
     #   super-csv
+djangorestframework-expander==0.2.3
+    # via blockstore
 djangorestframework-xml==2.0.0
     # via
     #   -r requirements/edx/testing.txt
@@ -1163,6 +1173,7 @@ pytz==2021.3
     # via
     #   -r requirements/edx/testing.txt
     #   babel
+    #   blockstore
     #   celery
     #   django
     #   django-ses
@@ -1372,6 +1383,7 @@ sphinxcontrib-serializinghtml==1.1.5
 sqlparse==0.4.2
     # via
     #   -r requirements/edx/testing.txt
+    #   blockstore
     #   django
     #   django-debug-toolbar
 staff-graded-xblock==1.6.0

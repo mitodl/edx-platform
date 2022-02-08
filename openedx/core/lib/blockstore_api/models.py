@@ -51,6 +51,19 @@ class Draft:
 
 
 @attr.s(frozen=True)
+class BundleVersion:
+    """
+    Metadata about a blockstore draft
+    """
+    bundle_uuid = attr.ib(type=UUID, converter=_convert_to_uuid)
+    version = attr.ib(type=int, validator=attr.validators.instance_of(int))
+    change_description = attr.ib(type=str)
+    created_at = attr.ib(type=datetime, validator=attr.validators.instance_of(datetime))
+    files = attr.ib(type=dict)
+    links = attr.ib(type=dict)
+
+
+@attr.s(frozen=True)
 class BundleFile:
     """
     Metadata about a file in a blockstore bundle or draft.

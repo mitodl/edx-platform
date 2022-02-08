@@ -168,7 +168,7 @@ def get_bundle_version_files_cached(bundle_uuid, bundle_version):
     cache_key = f'bundle_version_files_v2:{bundle_uuid}:{bundle_version}'
     result = cache.get(cache_key)
     if result is None:
-        result = blockstore_api.get_bundle_version_files(bundle_uuid, bundle_version)
+        result = list(blockstore_api.get_bundle_version_files(bundle_uuid, bundle_version))
         # Cache this result. We should be able to cache this forever, since bundle versions are immutable, but currently
         # this result may contain signed S3 URLs which become invalid after 3600 seconds. If Blockstore is improved to
         # return URLs that redirect to the signed S3 URLs, then this can be changed to cache forever.

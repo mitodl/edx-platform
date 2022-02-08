@@ -2,7 +2,6 @@
 Helper code for working with Blockstore bundles that contain OLX
 """
 
-import dateutil.parser
 import logging  # lint-amnesty, pylint: disable=wrong-import-order
 
 from functools import lru_cache
@@ -369,8 +368,7 @@ class LibraryBundle:
         version = get_bundle_version_number(self.bundle_uuid)
         if version == 0:
             return None
-        created_at_str = blockstore_api.get_bundle_version(self.bundle_uuid, version)['snapshot']['created_at']
-        last_published_time = dateutil.parser.parse(created_at_str)
+        last_published_time = blockstore_api.get_bundle_version(self.bundle_uuid, version).created_at
         self.cache.set(cache_key, last_published_time)
         return last_published_time
 
