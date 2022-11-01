@@ -2,7 +2,7 @@ Program Enrollments
 ======================
 
 This is the Program Enrollments plugin that allows university partners to
-enroll their students in Master's courses on the edx platform. 
+enroll their students in Master's courses on the edx platform. (just a test change)
 
 .. image:: doc_images/pe_uml.png
 
