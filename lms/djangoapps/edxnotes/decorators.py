@@ -53,7 +53,7 @@ def edxnotes(cls):
                 "content": original_get_html(self, *args, **kwargs),
                 "uid": generate_uid(),
                 "edxnotes_visibility": json.dumps(
-                    getattr(self, 'edxnotes_visibility', course.edxnotes_visibility)
+                    course.edxnotes_visibility
                 ),
                 "params": {
                     # Use camelCase to name keys.
