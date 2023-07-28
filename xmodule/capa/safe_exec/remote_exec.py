@@ -63,6 +63,9 @@ def send_safe_exec_request_v0(data):
         Response received from codejail api service
     """
     globals_dict = data["globals_dict"]
+    # Pull the extra_files from the global_dict since they are python_lib files in form of bytes.
+    # Because these byte files would fail json.dumps() below. We will put them back at the end just in case.
+    extra_files_in_global_dict = globals_dict.pop("extra_files", None)
     extra_files = data.pop("extra_files")
 
     codejail_service_endpoint = get_codejail_rest_service_endpoint()
@@ -101,7 +104,8 @@ def send_safe_exec_request_v0(data):
     if emsg:
         exception_msg = f"{emsg}. For more information check Codejail Service logs."
         exception = SafeExecException(exception_msg)
-
+    # Put the extra files back that we popped above
+    globals_dict["extra_files"] = extra_files_in_global_dict
     globals_dict.update(response_json.get("globals_dict"))
 
     return emsg, exception
