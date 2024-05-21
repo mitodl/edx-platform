@@ -1039,6 +1039,18 @@ FEATURES = {
     # .. toggle_creation_date: 2022-06-06
     # .. toggle_tickets: 'https://github.com/edx/edx-platform/pull/29538'
     'DISABLE_ALLOWED_ENROLLMENT_IF_ENROLLMENT_CLOSED': False,
+
+    # .. toggle_name: FEATURES['ENABLE_BLAKE2B_HASHING']
+    # .. toggle_implementation: DjangoSetting
+    # .. toggle_default: False
+    # .. toggle_description: Enables the memcache to use the blake2b hash algorithm instead of depreciated md4 for keys
+    #   exceeding 250 characters
+    # .. toggle_use_cases: open_edx
+    # .. toggle_creation_date: 2024-04-02
+    # .. toggle_target_removal_date: 2024-12-09
+    # .. toggle_warning: For consistency, keep the value in sync with the setting of the same name in the LMS and CMS.
+    # .. toggle_tickets: https://github.com/openedx/edx-platform/pull/34442
+    'ENABLE_BLAKE2B_HASHING': False,
 }
 
 # Specifies extra XBlock fields that should available when requested via the Course Blocks API

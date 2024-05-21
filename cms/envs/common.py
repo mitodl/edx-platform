@@ -531,6 +531,8 @@ FEATURES = {
     # .. toggle_creation_date: 2023-03-31
     # .. toggle_tickets: https://github.com/openedx/edx-platform/pull/32015
     'DISABLE_ADVANCED_SETTINGS': False,
+
+    'ENABLE_BLAKE2B_HASHING': False,
 }
 
 # .. toggle_name: ENABLE_COPPA_COMPLIANCE
