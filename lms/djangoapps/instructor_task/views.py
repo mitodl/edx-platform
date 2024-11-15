@@ -140,6 +140,7 @@ def get_task_completion_info(instructor_task):  # lint-amnesty, pylint: disable=
     problem_url = None
     entrance_exam_url = None
     email_id = None
+    task_input = None
     try:
         task_input = json.loads(instructor_task.task_input)
     except ValueError:
