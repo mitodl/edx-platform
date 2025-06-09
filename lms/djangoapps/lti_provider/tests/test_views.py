@@ -128,10 +128,11 @@ class LtiLaunchTest(LtiTestMixin, TestCase):
             )
         )
 
+    @patch('lms.djangoapps.lti_provider.views.LTI_PROVIDER_LAUNCH_SUCCESS.send_event')
     @patch('lms.djangoapps.lti_provider.views.render_courseware')
     @patch('lms.djangoapps.lti_provider.views.store_outcome_parameters')
     @patch('lms.djangoapps.lti_provider.views.authenticate_lti_user')
-    def test_valid_launch_with_optional_params(self, _authenticate, store_params, _render):
+    def test_valid_launch_with_optional_params(self, _authenticate, store_params, _render, lti_launch_success_send_event):
         """
         Verifies that the LTI launch succeeds when passed a valid request.
         """
@@ -141,6 +142,32 @@ class LtiLaunchTest(LtiTestMixin, TestCase):
             dict(list(ALL_PARAMS.items()) + list(LTI_OPTIONAL_PARAMS.items())),
             request.user,
             self.consumer
+        )
+        lti_launch_success_send_event.assert_called_with(
+            launch_data=LtiProviderLaunchData(
+                user=UserData(
+                    id=request.user.id,
+                    is_active=request.user.is_active,
+                    pii=UserPersonalData(
+                        username=request.user.username,
+                        email=request.user.email,
+                        name=request.user.profile.name,
+                    )
+                ),
+                course_key=COURSE_KEY,
+                usage_key=USAGE_KEY,
+                launch_params=LtiProviderLaunchParamsData(
+                    roles='Instructor,urn:lti:instrole:ims/lis/Administrator',
+                    context_id='lti_launch_context_id',
+                    user_id='LTI_User', extra_params={
+                        'context_title': 'context title',
+                        'context_label': 'context label',
+                        'lis_result_sourcedid': 'result sourcedid',
+                        'lis_outcome_service_url': 'outcome service URL',
+                        'tool_consumer_instance_guid': 'consumer instance guid',
+                    }
+                )
+            )
         )
 
     @patch('lms.djangoapps.courseware.views.views.render_xblock')
