@@ -43,7 +43,7 @@ def add_webpack_js_to_fragment(fragment, bundle_name):
     """
     Add all JS webpack chunks to the supplied fragment.
     """
-    import webpack_loader.utils
-    for chunk in webpack_loader.utils.get_files(bundle_name, None, 'DEFAULT'):
+    from webpack_loader.utils import get_files
+    for chunk in get_files(bundle_name, None, 'DEFAULT'):
         if chunk['name'].endswith(('.js', '.js.gz')):
             fragment.add_javascript_url(chunk['url'])
