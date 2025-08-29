@@ -29,6 +29,7 @@ def authenticate_lti_user(request, lti_user_id, lti_consumer):
     launch, log out the old user and log in the LTI identity.
     """
     lis_email = request.POST.get("lis_person_contact_email_primary")
+    lti_course_id = request.POST.get("custom_course_id")
 
     try:
         lti_user = LtiUser.objects.get(
@@ -42,6 +43,10 @@ def authenticate_lti_user(request, lti_user_id, lti_consumer):
             # before linking the LtiUser with the edx_user.
             if request.user.is_authenticated and request.user.email.lower() == lis_email.lower():
                 lti_user = create_lti_user(lti_user_id, lti_consumer, request.user.email)
+            # Bypass the user authentication if the course is from any of the defined courses 
+            # in CANVAS_FORCE_AUTOLOGIN_COURSES.
+            elif (lti_course_id and lti_course_id in settings.get("CANVAS_FORCE_AUTOLOGIN_COURSES", [])):
+                lti_user = create_lti_user(lti_user_id, lti_consumer, lis_email.lower())
             else:
                 # Ask the user to login before linking.
                 raise PermissionDenied() from exc
