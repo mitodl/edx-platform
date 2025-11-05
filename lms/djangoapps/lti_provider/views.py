@@ -63,7 +63,7 @@ def lti_launch(request, course_id, usage_id):
     # missing
     params = get_required_parameters(request.POST)
     if not params:
-        log.info('Missing required LTI parameters in LTI request: %s', request)
+        log.info('Missing required LTI parameters in LTI request: %s', request.path)
         return HttpResponseBadRequest()
     params.update(get_optional_parameters(request.POST))
     params.update(get_custom_parameters(request.POST))
@@ -81,7 +81,7 @@ def lti_launch(request, course_id, usage_id):
             'consumer key: %s and instance GUID: %s for request: %s',
             params['oauth_consumer_key'],
             params.get('tool_consumer_instance_guid', None),
-            request
+            request.path
         )
         return HttpResponseForbidden()
 
@@ -89,7 +89,7 @@ def lti_launch(request, course_id, usage_id):
     if not SignatureValidator(lti_consumer).verify(request):
         log.error(
             'Invalid OAuth signature for LTI launch from request: %s',
-            request
+            request.path
         )
         return HttpResponseForbidden()
 
@@ -101,7 +101,7 @@ def lti_launch(request, course_id, usage_id):
             'Invalid course key %s or usage key %s from request %s',
             course_id,
             usage_id,
-            request
+            request.path
         )
         raise Http404()  # lint-amnesty, pylint: disable=raise-missing-from
     params['course_key'] = course_key
@@ -116,7 +116,7 @@ def lti_launch(request, course_id, usage_id):
         log.info(
             'LTI user authentication failed for user Id: %s from request: %s',
             user_id,
-            request
+            request.path
         )
         request.session.flush()
         context = {
