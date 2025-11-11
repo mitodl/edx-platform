@@ -58,7 +58,7 @@ def authenticate_lti_user(request, lti_user_id, lti_consumer):
             # Verify that the email from the LTI Launch and the logged-in user are the same
             # before linking the LtiUser with the edx_user.
             log.info(
-                'LTI consumer requires existing user account for LTI user ID: %s from request: %s',
+                'LTI consumer requires existing user account for LTI user ID: %s from request path: %s',
                 lti_user_id,
                 request.path
             )
@@ -66,7 +66,7 @@ def authenticate_lti_user(request, lti_user_id, lti_consumer):
                 lti_user = create_lti_user(lti_user_id, lti_consumer, profile)
             else:
                 log.error(
-                    'LTI user account linking failed for LTI user ID: %s for request: %s: '
+                    'LTI user account linking failed for LTI user ID: %s for request path: %s: '
                     'either user is not logged in or email mismatched',
                     lti_user_id,
                     request.path
@@ -75,7 +75,7 @@ def authenticate_lti_user(request, lti_user_id, lti_consumer):
                 raise PermissionDenied() from exc
         elif lti_consumer.use_lti_pii:
             log.info(
-                'Creating LTI user with PII for LTI user ID: %s from request: %s',
+                'Creating LTI user with PII for LTI user ID: %s from request path: %s',
                 lti_user_id,
                 request.path
             )
@@ -83,7 +83,7 @@ def authenticate_lti_user(request, lti_user_id, lti_consumer):
             lti_user = create_lti_user(lti_user_id, lti_consumer, profile)
         else:
             log.info(
-                'Creating LTI user without PII for LTI user ID: %s from request: %s',
+                'Creating LTI user without PII for LTI user ID: %s from request path: %s',
                 lti_user_id,
                 request.path
             )
@@ -94,7 +94,7 @@ def authenticate_lti_user(request, lti_user_id, lti_consumer):
         # The user is not authenticated, or is logged in as somebody else.
         # Switch them to the LTI user
         log.info(
-            'Switching logged-in user to LTI user ID: %s for request: %s',
+            'Switching logged-in user to LTI user ID: %s for request path: %s',
             lti_user_id,
             request.path
         )
@@ -161,7 +161,7 @@ def switch_user(request, lti_user, lti_consumer):
     if not edx_user:
         # This shouldn't happen, since we've created edX accounts for any LTI
         # users by this point, but just in case we can return a 403.
-        log.error('Switching user failed for LTI user ID: %s from request: %s', lti_user.lti_user_id, request.path)
+        log.error('Switching user failed for LTI user ID: %s from request path: %s', lti_user.lti_user_id, request.path)
         raise PermissionDenied()
     login(request, edx_user)
     mark_user_change_as_expected(edx_user.id)

@@ -63,7 +63,7 @@ def lti_launch(request, course_id, usage_id):
     # missing
     params = get_required_parameters(request.POST)
     if not params:
-        log.info('Missing required LTI parameters in LTI request: %s', request.path)
+        log.info('Missing required LTI parameters in LTI request path: %s', request.path)
         return HttpResponseBadRequest()
     params.update(get_optional_parameters(request.POST))
     params.update(get_custom_parameters(request.POST))
@@ -78,7 +78,7 @@ def lti_launch(request, course_id, usage_id):
     except LtiConsumer.DoesNotExist:
         log.error(
             'LTI consumer lookup failed because no matching consumer was found against '
-            'consumer key: %s and instance GUID: %s for request: %s',
+            'consumer key: %s and instance GUID: %s for request path: %s',
             params['oauth_consumer_key'],
             params.get('tool_consumer_instance_guid', None),
             request.path
@@ -88,7 +88,7 @@ def lti_launch(request, course_id, usage_id):
     # Check the OAuth signature on the message
     if not SignatureValidator(lti_consumer).verify(request):
         log.error(
-            'Invalid OAuth signature for LTI launch from request: %s',
+            'Invalid OAuth signature for LTI launch from request path: %s',
             request.path
         )
         return HttpResponseForbidden()
@@ -98,7 +98,7 @@ def lti_launch(request, course_id, usage_id):
         course_key, usage_key = parse_course_and_usage_keys(course_id, usage_id)
     except InvalidKeyError:
         log.error(
-            'Invalid course key %s or usage key %s from request %s',
+            'Invalid course key %s or usage key %s from request path %s',
             course_id,
             usage_id,
             request.path
@@ -114,7 +114,7 @@ def lti_launch(request, course_id, usage_id):
         authenticate_lti_user(request, user_id, lti_consumer)
     except PermissionDenied:
         log.info(
-            'LTI user authentication failed for user Id: %s from request: %s',
+            'LTI user authentication failed for user Id: %s from request path: %s',
             user_id,
             request.path
         )
