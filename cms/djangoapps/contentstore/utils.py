@@ -255,15 +255,14 @@ def get_pages_and_resources_url(course_locator):
 
 def get_proctored_exam_settings_url(course_locator) -> str:
     """
-    Gets course authoring microfrontend URL for links to proctored exam settings page
+    Gets the relative path for links to proctored exam settings page.
+    Returns a path without the MFE base URL, since React Router prepends the base path.
     """
-    proctored_exam_settings_url = ''
     if exam_setting_view_enabled(course_locator):
         mfe_base_url = get_course_authoring_url(course_locator)
-        course_mfe_url = f'{mfe_base_url}/course/{course_locator}'
         if mfe_base_url:
-            proctored_exam_settings_url = f'{course_mfe_url}/pages-and-resources/proctoring/settings'
-    return proctored_exam_settings_url
+            return f'/course/{course_locator}/pages-and-resources/proctoring/settings'
+    return ''
 
 
 def get_editor_page_base_url(course_locator) -> str:
