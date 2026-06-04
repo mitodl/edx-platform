@@ -1114,6 +1114,8 @@ class CourseAccessRole(models.Model):
 class CourseAccessRoleHistory(TimeStampedModel):
     """
     Stores the change history for CourseAccessRole objects.
+
+    .. no_pii:
     """
     ACTION_CHOICES = (
         ('created', 'Created'),
@@ -1746,6 +1748,13 @@ class AccountRecovery(models.Model):  # noqa: DJ008
 
 
 class AllowedAuthUser(TimeStampedModel):
+    """
+    Tracks which employee email addresses are allowed to log in with password on a given site.
+
+    .. pii: Contains employee email address.
+    .. pii_types: email_address
+    .. pii_retirement: local_api
+    """
     site = models.ForeignKey(Site, related_name='allowed_auth_users', on_delete=models.CASCADE)
     email = models.EmailField(
         help_text=_(
