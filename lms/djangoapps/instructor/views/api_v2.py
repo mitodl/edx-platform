@@ -3605,6 +3605,22 @@ def _get_learner_identifier(request):
     return request.query_params.get('learner') or request.data.get('learner')
 
 
+def _get_only_if_higher(request):
+    """
+    Extract the only_if_higher flag from query params or request body.
+
+    Accepts a 'true' string (case-insensitive) or a JSON boolean. Reading the
+    body as well as query params matches ``_get_learner_identifier``, since the
+    instructor dashboard MFE sends these fields form-encoded in the POST body.
+    """
+    value = request.query_params.get('only_if_higher')
+    if value is None:
+        value = request.data.get('only_if_higher')
+    if isinstance(value, bool):
+        return value
+    return str(value).lower() == 'true'
+
+
 def _parse_course_and_problem(course_id, problem):
     """
     Parse and validate course_id and problem location strings.
@@ -3871,7 +3887,8 @@ class RescoreView(DeveloperErrorViewMixin, APIView):
     **POST** with `learner` query param: rescores a single learner (asynchronous task).
     **POST** without `learner`: rescores all learners (asynchronous task).
 
-    Optionally accepts `only_if_higher=true` query param to only update if new score is higher.
+    Optionally accepts `only_if_higher=true` (query param or request body) to only
+    update if the new score is higher.
     """
     permission_classes = (IsAuthenticated, permissions.InstructorPermission)
     permission_name = permissions.OVERRIDE_GRADES
@@ -3914,7 +3931,7 @@ class RescoreView(DeveloperErrorViewMixin, APIView):
             return error_response
         course_key, usage_key = parsed
 
-        only_if_higher = request.query_params.get('only_if_higher', 'false').lower() == 'true'
+        only_if_higher = _get_only_if_higher(request)
         learner_identifier = _get_learner_identifier(request)
 
         if learner_identifier:
