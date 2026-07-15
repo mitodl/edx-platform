@@ -3913,7 +3913,9 @@ class RescoreView(DeveloperErrorViewMixin, APIView):
             apidocs.string_parameter(
                 'only_if_higher',
                 apidocs.ParameterLocation.QUERY,
-                description="Optional: If 'true', only update scores that are higher than current.",
+                description="Optional: If 'true', only update scores that are higher than current. "
+                            "May be provided as a query parameter or in the request body "
+                            "(JSON boolean or string).",
             ),
         ],
         responses={
