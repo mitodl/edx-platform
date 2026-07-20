@@ -1,6 +1,8 @@
 """
 Tests for Instructor API v2 Special Exams endpoints.
 """
+from unittest.mock import patch
+
 import ddt
 from django.test.utils import override_settings
 from django.urls import reverse
