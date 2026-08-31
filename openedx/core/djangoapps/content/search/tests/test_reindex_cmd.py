@@ -53,14 +53,14 @@ class TestReindexStudioCommand(TestCase):
 
 @skip_unless_cms
 @override_settings(MEILISEARCH_ENABLED=True)
-@patch("openedx.core.djangoapps.content.search.api._wait_for_meili_task", new=MagicMock(return_value=None))
-@patch("openedx.core.djangoapps.content.search.api.MeilisearchClient")
+@patch("openedx.core.djangoapps.content.search.backends.meilisearch.MeilisearchBackend.wait_for_task", new=MagicMock(return_value=None))
+@patch("openedx.core.djangoapps.content.search.backends.meilisearch.MeilisearchClient")
 class TestRebuildIndexIncrementalTask(TestCase):
     """Tests for the rebuild_index_incremental Celery task."""
 
     def setUp(self):
         super().setUp()
-        api.clear_meilisearch_client()
+        api.clear_search_client()
 
     @patch("openedx.core.djangoapps.content.search.api.rebuild_index")
     def test_calls_rebuild_incremental(self, mock_rebuild, mock_meilisearch):

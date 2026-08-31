@@ -13,7 +13,6 @@ import hashlib
 import hmac
 import json
 import logging
-import math
 from datetime import datetime
 from typing import Any, Callable
 
@@ -29,7 +28,7 @@ from .base import (
     Filter,
     FilterTerm,
     In,
-    IndexSettingsDrift,
+    IndexDrift,
     Not,
     Or,
     SearchBackend,
@@ -97,7 +96,6 @@ def render_filter(term: FilterTerm | None) -> str:
         return f"{term.field}:!=null"
 
     if isinstance(term, Not):
-        inner = render_filter(term.term)
         if isinstance(term.term, Equals):
             return f"{term.term.field}:!={quote(term.term.value)}"
         if isinstance(term.term, In):
@@ -140,6 +138,8 @@ def prepare_document(document: dict) -> dict:
 
 class TypesenseBackend(SearchBackend):
     """Studio content search on Typesense."""
+
+    max_hits_per_request = MAX_PER_PAGE
 
     def __init__(self) -> None:
         self._client: typesense.Client | None = None
@@ -239,15 +239,18 @@ class TypesenseBackend(SearchBackend):
             status_cb = log.info
         status_cb(f"Settings for '{index_name}' were applied when the collection was created.")
 
-    def detect_settings_drift(self, index_name: str) -> IndexSettingsDrift:
+    def detect_index_drift(self, index_name: str) -> IndexDrift:
         """
         Compare the live collection's fields against the schema this app expects.
 
-        Only field-level drift is meaningful for Typesense: the notions
-        Meilisearch tracks separately (distinct attribute, ranking rules) are
-        per-request parameters here, not stored index settings, so they cannot
-        drift.
+        Only field-level drift is meaningful here. The settings Meilisearch
+        tracks separately - the distinct attribute and the ranking rules - are
+        per-request parameters in Typesense rather than stored index settings,
+        so they cannot drift and are reported as None.
         """
+        if not self.index_exists(index_name):
+            return IndexDrift(exists=False)
+
         try:
             actual = self.client.collections[index_name].retrieve()
         except TypesenseClientError as err:
@@ -255,33 +258,48 @@ class TypesenseBackend(SearchBackend):
 
         expected_fields = {field["name"] for field in collection_schema(index_name)["fields"]}
         actual_fields = {field["name"] for field in actual.get("fields", [])}
+        fields_match = expected_fields.issubset(actual_fields)
 
-        return IndexSettingsDrift(
-            filterable_attributes_match=expected_fields.issubset(actual_fields),
-            searchable_attributes_match=expected_fields.issubset(actual_fields),
-            sortable_attributes_match=expected_fields.issubset(actual_fields),
+        return IndexDrift(
+            exists=True,
+            is_empty=actual.get("num_documents", 0) == 0,
+            # Typesense derives the document key from the reserved `id` field,
+            # so there is no separate primary key that could be set wrongly.
+            primary_key_correct=True,
+            filterable_attributes_match=fields_match,
+            searchable_attributes_match=fields_match,
+            sortable_attributes_match=fields_match,
         )
 
     # --- documents ----------------------------------------------------------
 
-    def upsert_documents(self, index_name: str, documents: list[dict], *, wait: bool = True) -> None:
+    def _import(self, index_name: str, documents: list[dict], action: str) -> None:
+        """Bulk-import documents, failing loudly on a partial failure."""
         if not documents:
             return
         prepared = [prepare_document(document) for document in documents]
         try:
             responses = self.client.collections[index_name].documents.import_(
-                prepared, {"action": "upsert"}
+                prepared, {"action": action}
             )
         except TypesenseClientError as err:
             raise SearchBackendError(f"Could not index documents into '{index_name}'") from err
 
-        # import_ reports per-document success; a partial failure is a 200.
+        # import_ reports success per document, so a partial failure is still a 200.
         failures = [response for response in responses if not response.get("success")]
         if failures:
             raise SearchBackendError(
                 f"{len(failures)} of {len(prepared)} documents failed to index "
                 f"into '{index_name}': {failures[0]}"
             )
+
+    def upsert_documents(self, index_name: str, documents: list[dict], *, wait: bool = True) -> None:
+        """`emplace` merges, matching Meilisearch's update_documents."""
+        self._import(index_name, documents, "emplace")
+
+    def add_documents(self, index_name: str, documents: list[dict], *, wait: bool = True) -> None:
+        """`upsert` replaces the whole document, matching Meilisearch's add_documents."""
+        self._import(index_name, documents, "upsert")
 
     def get_document(self, index_name: str, document_id: str) -> dict:
         try:

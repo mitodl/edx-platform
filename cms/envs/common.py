@@ -1304,9 +1304,14 @@ EVENT_BUS_PRODUCER_CONFIG.update({  # noqa: F405
 # This affects the Authoring API swagger docs but not the legacy swagger docs under /api-docs/.
 REST_FRAMEWORK['DEFAULT_SCHEMA_CLASS'] = 'drf_spectacular.openapi.AutoSchema'  # noqa: F405
 
-################### Studio Search (beta), using Meilisearch ###################
+########################### Studio Search (beta) ##############################
 
-# Enable Studio search features (powered by Meilisearch) (beta, off by default)
+# Which search engine backs Studio content search. Meilisearch is the default,
+# so an existing deployment is unaffected. See
+# openedx/core/djangoapps/content/search/docs/decisions/0002-pluggable-search-backend.rst
+CONTENT_SEARCH_BACKEND = "openedx.core.djangoapps.content.search.backends.meilisearch.MeilisearchBackend"
+
+# Enable Studio search features (beta, off by default)
 MEILISEARCH_ENABLED = False
 # Meilisearch URL that the python backend can use. Often points to another docker container or k8s service.
 MEILISEARCH_URL = "http://meilisearch"

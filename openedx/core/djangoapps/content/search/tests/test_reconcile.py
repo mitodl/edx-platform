@@ -126,14 +126,14 @@ class TestIndexDrift(TestCase):
 
 @skip_unless_cms
 @override_settings(MEILISEARCH_ENABLED=True)
-@patch("openedx.core.djangoapps.content.search.api._wait_for_meili_task", new=MagicMock(return_value=None))
-@patch("openedx.core.djangoapps.content.search.api.MeilisearchClient")
+@patch("openedx.core.djangoapps.content.search.backends.meilisearch.MeilisearchBackend.wait_for_task", new=MagicMock(return_value=None))
+@patch("openedx.core.djangoapps.content.search.backends.meilisearch.MeilisearchClient")
 class TestDetectIndexDrift(TestCase):
     """Tests for _detect_index_drift()."""
 
     def setUp(self):
         super().setUp()
-        api.clear_meilisearch_client()
+        api.clear_search_client()
 
     def test_index_missing(self, mock_meilisearch):
         """When the index doesn't exist, returns exists=False with all other fields None."""
@@ -288,15 +288,15 @@ class TestDetectIndexDrift(TestCase):
 
 @skip_unless_cms
 @override_settings(MEILISEARCH_ENABLED=True)
-@patch("openedx.core.djangoapps.content.search.api.MeilisearchClient")
+@patch("openedx.core.djangoapps.content.search.backends.meilisearch.MeilisearchClient")
 class TestApplyIndexSettings(TestCase):
     """Tests for _apply_index_settings()."""
 
     def setUp(self):
         super().setUp()
-        api.clear_meilisearch_client()
+        api.clear_search_client()
 
-    @patch("openedx.core.djangoapps.content.search.api._wait_for_meili_task", new=MagicMock(return_value=None))
+    @patch("openedx.core.djangoapps.content.search.backends.meilisearch.MeilisearchBackend.wait_for_task", new=MagicMock(return_value=None))
     def test_applies_all_settings(self, mock_meilisearch):
         """All 5 settings are applied in wait mode."""
         mock_index = mock_meilisearch.return_value.index.return_value
@@ -310,7 +310,7 @@ class TestApplyIndexSettings(TestCase):
         mock_index.update_sortable_attributes.assert_called_once_with(INDEX_SORTABLE_ATTRIBUTES)
         mock_index.update_ranking_rules.assert_called_once_with(INDEX_RANKING_RULES)
 
-    @patch("openedx.core.djangoapps.content.search.api._wait_for_meili_task")
+    @patch("openedx.core.djangoapps.content.search.backends.meilisearch.MeilisearchBackend.wait_for_task")
     def test_waits_for_each_task(self, mock_wait, mock_meilisearch):
         """Each settings update is waited on when wait=True."""
         mock_index = mock_meilisearch.return_value.index.return_value
@@ -325,7 +325,7 @@ class TestApplyIndexSettings(TestCase):
 
         assert mock_wait.call_count == 5
 
-    @patch("openedx.core.djangoapps.content.search.api._wait_for_meili_task")
+    @patch("openedx.core.djangoapps.content.search.backends.meilisearch.MeilisearchBackend.wait_for_task")
     def test_does_not_wait_when_wait_false(self, mock_wait, mock_meilisearch):
         """Settings are fire-and-forget when wait=False."""
         status_cb = Mock()
@@ -335,7 +335,7 @@ class TestApplyIndexSettings(TestCase):
         mock_wait.assert_not_called()
         status_cb.assert_called()
 
-    @patch("openedx.core.djangoapps.content.search.api._wait_for_meili_task")
+    @patch("openedx.core.djangoapps.content.search.backends.meilisearch.MeilisearchBackend.wait_for_task")
     def test_raises_on_task_failure(self, mock_wait, mock_meilisearch):
         """MeilisearchError is raised if a waited-on task fails."""
         mock_wait.side_effect = MeilisearchError("Task failed")
@@ -346,14 +346,14 @@ class TestApplyIndexSettings(TestCase):
 
 @skip_unless_cms
 @override_settings(MEILISEARCH_ENABLED=True)
-@patch("openedx.core.djangoapps.content.search.api._wait_for_meili_task", new=MagicMock(return_value=None))
-@patch("openedx.core.djangoapps.content.search.api.MeilisearchClient")
+@patch("openedx.core.djangoapps.content.search.backends.meilisearch.MeilisearchBackend.wait_for_task", new=MagicMock(return_value=None))
+@patch("openedx.core.djangoapps.content.search.backends.meilisearch.MeilisearchClient")
 class TestReconcileIndex(TestCase):
     """Tests for reconcile_index()."""
 
     def setUp(self):
         super().setUp()
-        api.clear_meilisearch_client()
+        api.clear_search_client()
 
     @patch("openedx.core.djangoapps.content.search.api._detect_index_drift")
     @patch("openedx.core.djangoapps.content.search.api.reset_index")
@@ -501,21 +501,21 @@ class TestReconcileIndex(TestCase):
     @override_settings(MEILISEARCH_ENABLED=False)
     def test_meilisearch_disabled(self, mock_meilisearch):
         """When Meilisearch is disabled, reconcile_index raises RuntimeError (from client)."""
-        api.clear_meilisearch_client()
+        api.clear_search_client()
         with pytest.raises(RuntimeError):
             reconcile_index()
 
 
 @skip_unless_cms
 @override_settings(MEILISEARCH_ENABLED=True)
-@patch("openedx.core.djangoapps.content.search.api._wait_for_meili_task", new=MagicMock(return_value=None))
-@patch("openedx.core.djangoapps.content.search.api.MeilisearchClient")
+@patch("openedx.core.djangoapps.content.search.backends.meilisearch.MeilisearchBackend.wait_for_task", new=MagicMock(return_value=None))
+@patch("openedx.core.djangoapps.content.search.backends.meilisearch.MeilisearchClient")
 class TestHandlePostMigrate(TestCase):
     """Tests for the handle_post_migrate signal handler."""
 
     def setUp(self):
         super().setUp()
-        api.clear_meilisearch_client()
+        api.clear_search_client()
 
     @patch("openedx.core.djangoapps.content.search.handlers.reconcile_index")
     def test_calls_reconcile_for_search_app(self, mock_reconcile, mock_meilisearch):
@@ -591,14 +591,14 @@ class TestHandlePostMigrate(TestCase):
 
 @skip_unless_cms
 @override_settings(MEILISEARCH_ENABLED=True)
-@patch("openedx.core.djangoapps.content.search.api._wait_for_meili_task", new=MagicMock(return_value=None))
-@patch("openedx.core.djangoapps.content.search.api.MeilisearchClient")
+@patch("openedx.core.djangoapps.content.search.backends.meilisearch.MeilisearchBackend.wait_for_task", new=MagicMock(return_value=None))
+@patch("openedx.core.djangoapps.content.search.backends.meilisearch.MeilisearchClient")
 class TestInitIndexBackwardCompat(TestCase):
     """Tests that init_index() still works as a compatibility wrapper."""
 
     def setUp(self):
         super().setUp()
-        api.clear_meilisearch_client()
+        api.clear_search_client()
 
     @patch("openedx.core.djangoapps.content.search.api.reconcile_index")
     def test_init_index_delegates_to_reconcile(self, mock_reconcile, mock_meilisearch):

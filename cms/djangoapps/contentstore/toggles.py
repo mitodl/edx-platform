@@ -323,7 +323,7 @@ def libraries_v2_enabled():
     """
     return (
         ENABLE_CONTENT_LIBRARIES.is_enabled() and
-        search_api.is_meilisearch_enabled() and
+        search_api.is_search_enabled() and
         not DISABLE_NEW_LIBRARIES.is_enabled()
     )
 

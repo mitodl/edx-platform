@@ -15,7 +15,6 @@ Split deliberately in two:
 
 from __future__ import annotations
 
-import json
 import os
 import unittest
 from datetime import datetime, timedelta, timezone

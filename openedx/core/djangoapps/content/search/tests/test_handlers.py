@@ -24,8 +24,8 @@ except RuntimeError:
     SearchAccess = {}
 
 
-@patch("openedx.core.djangoapps.content.search.api._wait_for_meili_task", new=MagicMock(return_value=None))
-@patch("openedx.core.djangoapps.content.search.api.MeilisearchClient")
+@patch("openedx.core.djangoapps.content.search.backends.meilisearch.MeilisearchBackend.wait_for_task", new=MagicMock(return_value=None))
+@patch("openedx.core.djangoapps.content.search.backends.meilisearch.MeilisearchClient")
 @override_settings(MEILISEARCH_ENABLED=True)
 @skip_unless_cms
 class TestUpdateIndexHandlers(ModuleStoreTestCase, LiveServerTestCase):
@@ -43,7 +43,7 @@ class TestUpdateIndexHandlers(ModuleStoreTestCase, LiveServerTestCase):
 
         self.orgA = OrganizationFactory.create(short_name="orgA")
 
-        api.clear_meilisearch_client()  # Clear the Meilisearch client to avoid leaking state from other tests
+        api.clear_search_client()  # Clear the Meilisearch client to avoid leaking state from other tests
 
     def test_create_delete_xblock(self, meilisearch_client):
         # Create course

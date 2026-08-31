@@ -28,7 +28,7 @@ class StudioSearchView(APIView):
         """
         Give user details on how they can search studio content
         """
-        if not api.is_meilisearch_enabled():
+        if not api.is_search_enabled():
             raise NotFound("Meilisearch features are not enabled.")
 
         response_data = api.generate_user_token_for_studio_search(request)

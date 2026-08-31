@@ -124,13 +124,19 @@ class SearchResults:
 
 
 @define
-class IndexSettingsDrift:
+class IndexDrift:
     """
-    Which parts of a live index's configuration no longer match what this app
-    expects. Used by ``reconcile_index`` to decide whether a rebuild is needed.
+    The state of a live index compared with what this app expects.
+
+    ``None`` on a setting means the backend does not track it: engines disagree
+    about what is even a stored index setting. Meilisearch stores all five;
+    Typesense fixes fields at creation and treats ranking and distinctness as
+    per-request parameters, so those cannot drift there.
     """
 
-    primary_key_match: bool | None = None
+    exists: bool
+    is_empty: bool | None = None  # None if the index does not exist
+    primary_key_correct: bool | None = None  # None if the index does not exist
     distinct_attribute_match: bool | None = None
     filterable_attributes_match: bool | None = None
     searchable_attributes_match: bool | None = None
@@ -138,12 +144,11 @@ class IndexSettingsDrift:
     ranking_rules_match: bool | None = None
 
     @property
-    def has_drifted(self) -> bool:
-        """True if any checked setting does not match. Unchecked settings are ignored."""
+    def is_settings_drifted(self) -> bool:
+        """True if a tracked setting is explicitly wrong. Untracked (None) settings are ignored."""
         return any(
             match is False
             for match in (
-                self.primary_key_match,
                 self.distinct_attribute_match,
                 self.filterable_attributes_match,
                 self.searchable_attributes_match,
@@ -169,6 +174,11 @@ class SearchBackend(abc.ABC):
     Index names are passed in rather than held, because rebuilds run against a
     temporary index while the live one keeps serving.
     """
+
+    #: The most hits an engine will return from one search. Engines differ
+    #: sharply - Meilisearch allows 1000, Typesense 250 - so anything paging
+    #: through results must take its page size from here rather than guess.
+    max_hits_per_request: int = 250
 
     @abc.abstractmethod
     def check_connection(self) -> None:
@@ -215,14 +225,29 @@ class SearchBackend(abc.ABC):
         """
 
     @abc.abstractmethod
-    def detect_settings_drift(self, index_name: str) -> IndexSettingsDrift:
-        """Compare the live index configuration against what this app expects."""
+    def detect_index_drift(self, index_name: str) -> IndexDrift:
+        """Compare the live index against what this app expects."""
 
     # --- documents ----------------------------------------------------------
 
     @abc.abstractmethod
     def upsert_documents(self, index_name: str, documents: list[dict], *, wait: bool = True) -> None:
-        """Insert or update documents, matched on their ``id``."""
+        """
+        Merge documents into the index, matched on their ``id``.
+
+        Fields absent from a given document are LEFT ALONE. This is what lets a
+        caller push a partial document - a tags-only or collections-only update -
+        without having to rebuild the whole thing.
+        """
+
+    @abc.abstractmethod
+    def add_documents(self, index_name: str, documents: list[dict], *, wait: bool = True) -> None:
+        """
+        Replace documents wholesale, matched on their ``id``.
+
+        Fields absent from a given document are REMOVED. Use this when the
+        caller has built the complete document, as a full reindex does.
+        """
 
     @abc.abstractmethod
     def get_document(self, index_name: str, document_id: str) -> dict:
@@ -258,15 +283,18 @@ class SearchBackend(abc.ABC):
         *,
         search_filter: Filter | None = None,
         attributes_to_retrieve: list[str] | None = None,
-        batch_size: int = 1000,
+        batch_size: int | None = None,
     ) -> Iterator[dict]:
         """
         Yield every document matching the filter, a page at a time.
 
         Implemented once here in terms of ``search``, since paging is the same
         shape for every engine; override only if an engine offers something
-        better.
+        better. The page size defaults to the engine's own maximum, and is
+        capped by it - asking for more than an engine allows is an error, not a
+        thing to discover at runtime.
         """
+        batch_size = min(batch_size or self.max_hits_per_request, self.max_hits_per_request)
         offset = 0
         while True:
             results = self.search(

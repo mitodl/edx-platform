@@ -1,25 +1,23 @@
 """
-Content index and search API using Meilisearch
+Content index and search API.
+
+The search engine itself lives behind ``backends``; nothing here talks to one
+directly. Which engine is used is set by ``CONTENT_SEARCH_BACKEND``.
 """
 
 from __future__ import annotations
 
 import logging
-import time
 from collections.abc import Iterator
 from contextlib import contextmanager, nullcontext
 from datetime import datetime, timedelta, timezone
 from functools import wraps
 from typing import Callable, Generator, cast  # noqa: UP035
 
-from attrs import define
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.core.paginator import Paginator
-from meilisearch import Client as MeilisearchClient
-from meilisearch.errors import MeilisearchApiError, MeilisearchError
-from meilisearch.models.task import TaskInfo
 from opaque_keys import OpaqueKey
 from opaque_keys.edx.keys import CourseKey, UsageKey
 from opaque_keys.edx.locator import LibraryCollectionLocator, LibraryContainerLocator, LibraryLocatorV2
@@ -30,19 +28,21 @@ from rest_framework.request import Request
 from common.djangoapps.student.role_helpers import get_course_roles
 from common.djangoapps.student.roles import GlobalStaff
 from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
-from openedx.core.djangoapps.content.search.index_config import (
-    INDEX_DISTINCT_ATTRIBUTE,
-    INDEX_FILTERABLE_ATTRIBUTES,
-    INDEX_PRIMARY_KEY,
-    INDEX_RANKING_RULES,
-    INDEX_SEARCHABLE_ATTRIBUTES,
-    INDEX_SORTABLE_ATTRIBUTES,
-)
 from openedx.core.djangoapps.content.search.models import IncrementalIndexCompleted, get_access_ids_for_request
 from openedx.core.djangoapps.content_libraries import api as lib_api
 from xmodule.modulestore.django import modulestore
 from xmodule.modulestore.exceptions import ItemNotFoundError
 
+from .backends import (
+    Equals,
+    clear_search_backend,
+    Filter,
+    # Re-exported: IndexDrift was defined here before the backends split, and
+    # callers (including reconcile_index's tests) still import it from api.
+    IndexDrift,
+    SearchBackendError,
+    get_search_backend,
+)
 from .documents import (
     Fields,
     meili_id_from_opaque_key,
@@ -62,16 +62,11 @@ User = get_user_model()
 
 STUDIO_INDEX_SUFFIX = "studio_content"
 
-Filter = str | list[str | list[str]]
-
 if hasattr(settings, "MEILISEARCH_INDEX_PREFIX"):
     STUDIO_INDEX_NAME = settings.MEILISEARCH_INDEX_PREFIX + STUDIO_INDEX_SUFFIX
 else:
     STUDIO_INDEX_NAME = STUDIO_INDEX_SUFFIX
 
-
-_MEILI_CLIENT = None
-_MEILI_API_KEY_UID = None
 
 LOCK_EXPIRE = 24 * 60 * 60  # Lock expires in 24 hours
 
@@ -109,86 +104,27 @@ def _get_running_rebuild_index_name() -> str | None:
     return cache.get(lock_id)
 
 
-def _get_meilisearch_client():
-    """
-    Get the Meiliesearch client
-    """
-    global _MEILI_CLIENT  # pylint: disable=global-statement
-
-    # Connect to Meilisearch
-    if not is_meilisearch_enabled():
+def _backend():
+    """The configured search backend."""
+    if not is_search_enabled():
         raise RuntimeError("MEILISEARCH_ENABLED is not set - search functionality disabled.")
-
-    if _MEILI_CLIENT is not None:
-        return _MEILI_CLIENT
-
-    _MEILI_CLIENT = MeilisearchClient(settings.MEILISEARCH_URL, settings.MEILISEARCH_API_KEY)
-    try:
-        _MEILI_CLIENT.health()
-    except MeilisearchError as err:
-        _MEILI_CLIENT = None
-        raise ConnectionError("Unable to connect to Meilisearch") from err
-    return _MEILI_CLIENT
+    return get_search_backend()
 
 
-def clear_meilisearch_client():
-    global _MEILI_CLIENT  # pylint: disable=global-statement
-
-    _MEILI_CLIENT = None
-
-
-def _get_meili_api_key_uid():
+def clear_search_client() -> None:
     """
-    Helper method to get the UID of the API key we're using for Meilisearch
-    """
-    global _MEILI_API_KEY_UID  # pylint: disable=global-statement
-    if _MEILI_API_KEY_UID is None:
-        _MEILI_API_KEY_UID = _get_meilisearch_client().get_key(settings.MEILISEARCH_API_KEY).uid
-    return _MEILI_API_KEY_UID
+    Drop the cached backend, and with it the engine client it holds.
 
-
-def _wait_for_meili_task(info: TaskInfo) -> None:
+    Mostly for tests, and for picking up a settings change without a restart.
     """
-    Simple helper method to wait for a Meilisearch task to complete
-    This method will block until the task is completed, so it should only be used in celery tasks
-    or management commands.
-
-    ✨ Note: "Meilisearch processes tasks in the order they were added to the queue."
-       per https://www.meilisearch.com/docs/capabilities/indexing/tasks_and_batches/monitor_tasks#monitoring-task-status
-       so if you need to wait for multiple tasks, simply wait for the final (last) task.
-    """
-    client = _get_meilisearch_client()
-    # This function almost always gets called immediately after enqueing a task, and from experiments, an initial wait
-    # of at least 15ms is warranted, as the task is almost never done in less than 10ms. We are using 20ms which seems
-    # to work well without requiring an additional wait in most cases.
-    sleep_delay = 0.020  # Initial wait is only 20ms but we will back off exponentially
-    time.sleep(sleep_delay)
-    current_status = client.get_task(info.task_uid)
-    while current_status.status in ("enqueued", "processing"):
-        time.sleep(sleep_delay)
-        sleep_delay = min(sleep_delay * 1.5, 2.0)  # Increase delay up to 2s
-        current_status = client.get_task(info.task_uid)
-    if current_status.status != "succeeded":
-        try:
-            err_reason = current_status.error["message"]
-        except (TypeError, KeyError):
-            err_reason = "Unknown error"
-        raise MeilisearchError(err_reason)
+    clear_search_backend()
 
 
 def _index_exists(index_name: str) -> bool:
     """
     Check if an index exists
     """
-    client = _get_meilisearch_client()
-    try:
-        client.get_index(index_name)
-    except MeilisearchError as err:
-        if err.code == "index_not_found":
-            return False
-        else:
-            raise err
-    return True
+    return _backend().index_exists(index_name)
 
 
 @contextmanager
@@ -203,35 +139,20 @@ def _using_temp_index(status_cb: Callable[[str], None] | None = None) -> Generat
     if status_cb is None:
         status_cb = log.info
 
-    client = _get_meilisearch_client()
+    backend = _backend()
     status_cb("Checking index...")
     with _index_rebuild_lock() as temp_index_name:
-        if _index_exists(temp_index_name):
+        if backend.index_exists(temp_index_name):
             status_cb("Temporary index already exists. Deleting it...")
-            _wait_for_meili_task(client.delete_index(temp_index_name))
+            backend.delete_index(temp_index_name)
 
         status_cb("Creating new index...")
-        _wait_for_meili_task(client.create_index(temp_index_name, {"primaryKey": INDEX_PRIMARY_KEY}))
-        new_index_created = client.get_index(temp_index_name).created_at
+        backend.create_index(temp_index_name)
 
         yield temp_index_name
 
-        if not _index_exists(STUDIO_INDEX_NAME):
-            # We have to create the "target" index before we can successfully swap the new one into it:
-            status_cb("Preparing to swap into index (first time)...")
-            _wait_for_meili_task(client.create_index(STUDIO_INDEX_NAME))
         status_cb("Swapping index...")
-        client.swap_indexes([{"indexes": [temp_index_name, STUDIO_INDEX_NAME]}])
-        # If we're using an API key that's restricted to certain index prefix(es), we won't be able to get the status
-        # of this request unfortunately. https://github.com/meilisearch/meilisearch/issues/4103
-        while True:
-            time.sleep(1)
-            if client.get_index(STUDIO_INDEX_NAME).created_at != new_index_created:
-                status_cb("Waiting for swap completion...")
-            else:
-                break
-        status_cb("Deleting old index...")
-        _wait_for_meili_task(client.delete_index(temp_index_name))
+        backend.swap_indexes(STUDIO_INDEX_NAME, temp_index_name)
 
 
 def _index_is_empty(index_name: str) -> bool:
@@ -241,9 +162,7 @@ def _index_is_empty(index_name: str) -> bool:
     Args:
         index_name (str): The name of the index to check
     """
-    client = _get_meilisearch_client()
-    index = client.get_index(index_name)
-    return index.get_stats().number_of_documents == 0
+    return _backend().index_is_empty(index_name)
 
 
 def _apply_index_settings(
@@ -252,43 +171,17 @@ def _apply_index_settings(
     status_cb: Callable[[str], None] | None = None,
 ) -> None:
     """
-    Apply the standard Meilisearch settings to an index.
+    Apply this app's configuration to an index.
 
-    When wait=False, settings are sent in fire-and-forget mode. This is appropriate
-    for empty temporary indexes that will immediately be populated on the same Meilisearch
+    When wait=False, settings are sent fire-and-forget. This is appropriate for
+    an empty temporary index that will immediately be populated on the same
     task queue.
 
-    When wait=True, each settings task is synchronously waited on before returning.
-    This is appropriate when reconciling a live index and we need confirmation that the
-    settings have been applied before returning.
-
-    Args:
-        index_name: The name of the index to configure.
-        wait: Whether to wait for each Meilisearch settings task to complete.
-        status_cb: Optional callback for status messages when wait=True.
+    When wait=True, each settings change is confirmed before returning, which is
+    what reconciling a live index needs. Backends whose writes are synchronous
+    ignore the distinction.
     """
-    if status_cb is None:
-        status_cb = log.info
-
-    client = _get_meilisearch_client()
-    index = client.index(index_name)
-
-    settings_updates = (
-        ("distinct attribute", index.update_distinct_attribute, INDEX_DISTINCT_ATTRIBUTE),
-        ("filterable attributes", index.update_filterable_attributes, INDEX_FILTERABLE_ATTRIBUTES),
-        ("searchable attributes", index.update_searchable_attributes, INDEX_SEARCHABLE_ATTRIBUTES),
-        ("sortable attributes", index.update_sortable_attributes, INDEX_SORTABLE_ATTRIBUTES),
-        ("ranking rules", index.update_ranking_rules, INDEX_RANKING_RULES),
-    )
-
-    for label, update_method, value in settings_updates:
-        status_cb(f"Applying {label} to '{index_name}'...")
-        if wait:
-            _wait_for_meili_task(update_method(value))
-        else:
-            update_method(value)
-
-    status_cb(f"All settings applied to '{index_name}'.")
+    _backend().apply_index_settings(index_name, wait=wait, status_cb=status_cb)
 
 
 def _recurse_children(block, fn, status_cb: Callable[[str], None] | None = None) -> None:
@@ -322,30 +215,30 @@ def _update_index_docs(docs) -> None:
     if not docs:
         return
 
-    client = _get_meilisearch_client()
+    backend = _backend()
     current_rebuild_index_name = _get_running_rebuild_index_name()
 
     if current_rebuild_index_name:
-        # If there is a rebuild in progress, the document will also be added to the new index.
-        client.index(current_rebuild_index_name).update_documents(docs)
-    _wait_for_meili_task(client.index(STUDIO_INDEX_NAME).update_documents(docs))
+        # If there is a rebuild in progress, the document goes into the new index too.
+        backend.upsert_documents(current_rebuild_index_name, docs, wait=False)
+    backend.upsert_documents(STUDIO_INDEX_NAME, docs)
 
 
-def only_if_meilisearch_enabled(f):
+def only_if_search_enabled(f):
     """
-    Only call `f` if meilisearch is enabled
+    Only call `f` if Studio content search is enabled
     """
 
     @wraps(f)
     def wrapper(*args, **kwargs):
         """Wraps the decorated function."""
-        if is_meilisearch_enabled():
+        if is_search_enabled():
             return f(*args, **kwargs)
 
     return wrapper
 
 
-def is_meilisearch_enabled() -> bool:
+def is_search_enabled() -> bool:
     """
     Returns whether Meilisearch is enabled
     """
@@ -369,83 +262,13 @@ def reset_index(status_cb: Callable[[str], None] | None = None) -> None:
     status_cb("Index reset complete.")
 
 
-@define
-class IndexDrift:
-    """
-    Represents the drift state of a Meilisearch index compared to the expected configuration.
-    """
-
-    exists: bool
-    is_empty: bool | None = None  # None if index doesn't exist
-    primary_key_correct: bool | None = None  # None if index doesn't exist
-    distinct_attribute_match: bool | None = None
-    filterable_attributes_match: bool | None = None
-    searchable_attributes_match: bool | None = None
-    sortable_attributes_match: bool | None = None
-    ranking_rules_match: bool | None = None
-
-    @property
-    def is_settings_drifted(self) -> bool:
-        """True if any of the 5 settings fields is False (not None, but explicitly False)."""
-        return any(
-            setting_fields is False
-            for setting_fields in (
-                self.distinct_attribute_match,
-                self.filterable_attributes_match,
-                self.searchable_attributes_match,
-                self.sortable_attributes_match,
-                self.ranking_rules_match,
-            )
-        )
-
-
 def _detect_index_drift(index_name: str) -> IndexDrift:
     """
-    Inspect the current state of a Meilisearch index and return a structured drift report.
+    Inspect the current state of an index and return a structured drift report.
 
-    It provides per-setting match status plus primary key and emptiness information.
-
-    Args:
-        index_name (str): The name of the index to inspect.
-
-    Returns:
-        IndexDrift: Structured drift report.
+    Which settings a backend can report on varies by engine; see IndexDrift.
     """
-    if not _index_exists(index_name):
-        return IndexDrift(exists=False)
-
-    client = _get_meilisearch_client()
-    index = client.get_index(index_name)
-
-    # Check primary key
-    primary_key_correct = index.primary_key == INDEX_PRIMARY_KEY
-
-    # Check emptiness
-    is_empty = index.get_stats().number_of_documents == 0
-
-    # Check settings
-    index_settings = index.get_settings()
-
-    def _compare_setting(key, expected):
-        """Compare a single setting value against the expected value."""
-        actual = index_settings.get(key, [] if isinstance(expected, list) else None)
-        if isinstance(expected, list):
-            # For ranking rules, order matters; for other lists, it doesn't
-            if key == "rankingRules":
-                return list(actual) == list(expected)
-            return set(actual) == set(expected)
-        return actual == expected
-
-    return IndexDrift(
-        exists=True,
-        is_empty=is_empty,
-        primary_key_correct=primary_key_correct,
-        distinct_attribute_match=_compare_setting("distinctAttribute", INDEX_DISTINCT_ATTRIBUTE),
-        filterable_attributes_match=_compare_setting("filterableAttributes", INDEX_FILTERABLE_ATTRIBUTES),
-        searchable_attributes_match=_compare_setting("searchableAttributes", INDEX_SEARCHABLE_ATTRIBUTES),
-        sortable_attributes_match=_compare_setting("sortableAttributes", INDEX_SORTABLE_ATTRIBUTES),
-        ranking_rules_match=_compare_setting("rankingRules", INDEX_RANKING_RULES),
-    )
+    return _backend().detect_index_drift(index_name)
 
 
 def reconcile_index(
@@ -548,7 +371,7 @@ def index_course(
     Rebuilds the index for a given course.
     """
     store = modulestore()
-    client = _get_meilisearch_client()
+    backend = _backend()
     docs = []
     if index_name is None:
         index_name = STUDIO_INDEX_NAME
@@ -574,7 +397,7 @@ def index_course(
 
     if docs:
         # Add all the docs in this course at once (usually faster than adding one at a time):
-        _wait_for_meili_task(client.index(index_name).add_documents(docs))
+        backend.add_documents(index_name, docs)
     return docs
 
 
@@ -587,7 +410,7 @@ def rebuild_index(  # pylint: disable=too-many-statements
     if status_cb is None:
         status_cb = log.info
 
-    client = _get_meilisearch_client()
+    backend = _backend()
 
     # Get the lists of libraries
     status_cb("Counting libraries...")
@@ -642,8 +465,8 @@ def rebuild_index(  # pylint: disable=too-many-statements
             if docs:
                 try:
                     # Add all the docs in this library at once (usually faster than adding one at a time):
-                    _wait_for_meili_task(client.index(index_name).add_documents(docs))
-                except (TypeError, KeyError, MeilisearchError) as err:
+                    backend.add_documents(index_name, docs)
+                except (TypeError, KeyError, SearchBackendError) as err:
                     status_cb(f"Error indexing library {lib_key}: {err}")
             return docs
 
@@ -663,8 +486,8 @@ def rebuild_index(  # pylint: disable=too-many-statements
             if docs:
                 try:
                     # Add docs in batch of 100 at once (usually faster than adding one at a time):
-                    _wait_for_meili_task(client.index(index_name).add_documents(docs))
-                except (TypeError, KeyError, MeilisearchError) as err:
+                    backend.add_documents(index_name, docs)
+                except (TypeError, KeyError, SearchBackendError) as err:
                     status_cb(f"Error indexing collection batch {p}: {err}")
             return num_done
 
@@ -694,8 +517,8 @@ def rebuild_index(  # pylint: disable=too-many-statements
             if docs:
                 try:
                     # Add docs in batch of 100 at once (usually faster than adding one at a time):
-                    _wait_for_meili_task(client.index(index_name).add_documents(docs))
-                except (TypeError, KeyError, MeilisearchError) as err:
+                    backend.add_documents(index_name, docs)
+                except (TypeError, KeyError, SearchBackendError) as err:
                     status_cb(f"Error indexing container batch {p}: {err}")
             return num_done
 
@@ -803,33 +626,33 @@ def delete_index_doc(key: OpaqueKey, *, delete_children: bool = False) -> None:
     doc = searchable_doc_for_key(key)
     _delete_index_doc(doc[Fields.id])
     if delete_children:
-        _delete_documents(f'{Fields.breadcrumbs}.{Fields.usage_key} = "{key}"')
+        _delete_documents(Equals(f"{Fields.breadcrumbs}.{Fields.usage_key}", str(key)))
 
 
 def delete_docs_with_context_key(key: OpaqueKey) -> None:
     """
     Delete all docs for given context key
     """
-    _delete_documents(f'{Fields.context_key} = "{key}"')
+    _delete_documents(Equals(Fields.context_key, str(key)))
 
 
-def _delete_documents(filter_query: str) -> None:
+def _delete_documents(filter_query: Filter | None) -> None:
     """
     Deletes all documents from the search index that match the given filter
 
     Args:
-        filter (str): The query to use when filtering documents
+        filter_query: A structured filter (see ``backends.base``)
     """
     if not filter_query:
         return
 
-    client = _get_meilisearch_client()
+    backend = _backend()
     current_rebuild_index_name = _get_running_rebuild_index_name()
 
     if current_rebuild_index_name:
-        # If there is a rebuild in progress, the document will also be removed from the new index.
-        client.index(current_rebuild_index_name).delete_documents(filter=filter_query)
-    _wait_for_meili_task(client.index(STUDIO_INDEX_NAME).delete_documents(filter=filter_query))
+        # If there is a rebuild in progress, the document is removed from the new index too.
+        backend.delete_documents_by_filter(current_rebuild_index_name, filter_query)
+    backend.delete_documents_by_filter(STUDIO_INDEX_NAME, filter_query)
 
 
 def _delete_index_doc(doc_id) -> None:
@@ -841,14 +664,14 @@ def _delete_index_doc(doc_id) -> None:
     if not doc_id:
         return
 
-    client = _get_meilisearch_client()
+    backend = _backend()
     current_rebuild_index_name = _get_running_rebuild_index_name()
 
     if current_rebuild_index_name:
-        # If there is a rebuild in progress, the document will also be removed from the new index.
-        client.index(current_rebuild_index_name).delete_document(doc_id)
+        # If there is a rebuild in progress, the document is removed from the new index too.
+        backend.delete_document(current_rebuild_index_name, doc_id)
 
-    _wait_for_meili_task(client.index(STUDIO_INDEX_NAME).delete_document(doc_id))
+    backend.delete_document(STUDIO_INDEX_NAME, doc_id)
 
 
 def upsert_library_block_index_doc(usage_key: UsageKey) -> None:
@@ -870,13 +693,11 @@ def _get_document_from_index(document_id: str) -> dict:
 
     Returns None if the document or index do not exist.
     """
-    client = _get_meilisearch_client()
     document = None
     index_name = STUDIO_INDEX_NAME
     try:
-        index = client.get_index(index_name)
-        document = index.get_document(document_id)
-    except (MeilisearchError, MeilisearchApiError) as err:
+        document = _backend().get_document(index_name, document_id)
+    except SearchBackendError as err:
         # The index or document doesn't exist
         log.warning(f"Unable to fetch document {document_id} from {index_name}: {err}")
 
@@ -1076,22 +897,24 @@ def _get_user_orgs(request: Request) -> list[str]:
     )
 
 
-def _get_meili_access_filter(request: Request) -> dict:
+def _get_access_filter(request: Request) -> str:
     """
-    Return meilisearch filter based on the requesting user's permissions.
+    Return the search filter that limits results to what the user may see.
+
+    Rendered to an engine-specific string because it is embedded inside the
+    restricted API key handed to the browser, rather than passed as an ordinary
+    filter argument.
     """
-    # Global staff can see anything, so no filters required.
+    # Global staff can see anything, so no filter is required.
     if GlobalStaff().has_user(request.user):
-        return {}
+        return ""
 
     # Everyone else is limited to their org staff roles...
     user_orgs = _get_user_orgs(request)[:MAX_ORGS_IN_FILTER]
 
     # ...or the N most recent courses and libraries they can access.
     access_ids = get_access_ids_for_request(request, omit_orgs=user_orgs)[:MAX_ACCESS_IDS_IN_FILTER]
-    return {
-        "filter": f"org IN {user_orgs} OR access_id IN {access_ids}",
-    }
+    return _backend().access_filter(user_orgs, access_ids)
 
 
 def generate_user_token_for_studio_search(request):
@@ -1100,13 +923,10 @@ def generate_user_token_for_studio_search(request):
     """
     expires_at = datetime.now(tz=timezone.utc) + timedelta(days=7)  # noqa: UP017
 
-    search_rules = {
-        STUDIO_INDEX_NAME: _get_meili_access_filter(request),
-    }
-    # Note: the following is just generating a JWT. It doesn't actually make an API call to Meilisearch.
-    restricted_api_key = _get_meilisearch_client().generate_tenant_token(
-        api_key_uid=_get_meili_api_key_uid(),
-        search_rules=search_rules,
+    # Note: this only mints a credential locally; it makes no API call.
+    restricted_api_key = _backend().generate_user_token(
+        STUDIO_INDEX_NAME,
+        search_filter=_get_access_filter(request),
         expires_at=expires_at,
     )
 
@@ -1155,21 +975,17 @@ def fetch_block_types(extra_filter: Filter | None = None):
         },
     }
     """
-    extra_filter_formatted = force_array(extra_filter)
-
-    client = _get_meilisearch_client()
-    index = client.get_index(STUDIO_INDEX_NAME)
-
-    response = index.search(
-        "",
-        {
-            "facets": ["block_type"],
-            "filter": extra_filter_formatted,
-            "limit": 0,
-        },
+    results = _backend().search(
+        STUDIO_INDEX_NAME,
+        search_filter=extra_filter,
+        facets=[Fields.block_type],
+        limit=0,
     )
 
-    return response
+    return {
+        "facetDistribution": results.facet_distribution,
+        "estimatedTotalHits": results.total_hits,
+    }
 
 
 def get_all_blocks_from_context(
@@ -1185,26 +1001,8 @@ def get_all_blocks_from_context(
     on the search index, so this should only be used for analysis/estimation
     purposes.
     """
-    limit = 1000
-    offset = 0
-
-    client = _get_meilisearch_client()
-    index = client.get_index(STUDIO_INDEX_NAME)
-
-    while True:
-        response = index.search(
-            "",
-            {
-                "filter": [f'context_key = "{context_key}"'],
-                "limit": limit,
-                "offset": offset,
-                "attributesToRetrieve": ["usage_key"] + (extra_attributes_to_retrieve or []),
-            },
-        )
-
-        yield from response["hits"]
-
-        if response["estimatedTotalHits"] <= offset + limit:
-            break
-
-        offset += limit
+    yield from _backend().iter_documents(
+        STUDIO_INDEX_NAME,
+        search_filter=Equals(Fields.context_key, str(context_key)),
+        attributes_to_retrieve=[Fields.usage_key] + (extra_attributes_to_retrieve or []),
+    )

@@ -28,6 +28,13 @@ from xmodule.modulestore.tests.django_utils import TEST_DATA_SPLIT_MODULESTORE, 
 try:
     # This import errors in the lms because content.search is not an installed app there.
     from .. import api
+    from ..backends.base import Equals
+    from ..index_config import (
+        INDEX_FILTERABLE_ATTRIBUTES,
+        INDEX_RANKING_RULES,
+        INDEX_SEARCHABLE_ATTRIBUTES,
+        INDEX_SORTABLE_ATTRIBUTES,
+    )
     from ..models import IncrementalIndexCompleted, SearchAccess
 except RuntimeError:
     SearchAccess = {}
@@ -44,8 +51,8 @@ EMPTY_TAGS = {
 
 @ddt.ddt
 @skip_unless_cms
-@patch("openedx.core.djangoapps.content.search.api._wait_for_meili_task", new=MagicMock(return_value=None))
-@patch("openedx.core.djangoapps.content.search.api.MeilisearchClient")
+@patch("openedx.core.djangoapps.content.search.backends.meilisearch.MeilisearchBackend.wait_for_task", new=MagicMock(return_value=None))
+@patch("openedx.core.djangoapps.content.search.backends.meilisearch.MeilisearchClient")
 class TestSearchApi(ModuleStoreTestCase):
     """
     Tests for the Studio content search and index API.
@@ -66,7 +73,7 @@ class TestSearchApi(ModuleStoreTestCase):
         self.modulestore_patcher.start()
 
         # Clear the Meilisearch client to avoid side effects from other tests
-        api.clear_meilisearch_client()
+        api.clear_search_client()
 
         modified_date = datetime(2024, 5, 6, 7, 8, 9, tzinfo=UTC)
         # Create course
@@ -462,10 +469,10 @@ class TestSearchApi(ModuleStoreTestCase):
         mock_index.get_stats.return_value = Mock(number_of_documents=100)
         mock_index.get_settings.return_value = {
             "distinctAttribute": "usage_key",
-            "filterableAttributes": list(api.INDEX_FILTERABLE_ATTRIBUTES),
-            "searchableAttributes": list(api.INDEX_SEARCHABLE_ATTRIBUTES),
-            "sortableAttributes": list(api.INDEX_SORTABLE_ATTRIBUTES),
-            "rankingRules": list(api.INDEX_RANKING_RULES),
+            "filterableAttributes": list(INDEX_FILTERABLE_ATTRIBUTES),
+            "searchableAttributes": list(INDEX_SEARCHABLE_ATTRIBUTES),
+            "sortableAttributes": list(INDEX_SORTABLE_ATTRIBUTES),
+            "rankingRules": list(INDEX_RANKING_RULES),
         }
         mock_meilisearch.return_value.get_index.return_value = mock_index
 
@@ -1376,15 +1383,16 @@ class TestSearchApi(ModuleStoreTestCase):
     def test_fetch_block_types(self, mock_meilisearch):
         from openedx.core.djangoapps.content.search.api import fetch_block_types
 
-        mock_index = mock_meilisearch.return_value.get_index.return_value
-        fetch_block_types('context_key = test')
+        mock_index = mock_meilisearch.return_value.index.return_value
+        fetch_block_types(Equals("context_key", "test"))
 
         mock_index.search.assert_called_once_with(
             "",
             {
-                "facets": ["block_type"],
-                "filter": ['context_key = test'],
                 "limit": 0,
+                "offset": 0,
+                "filter": 'context_key = "test"',
+                "facets": ["block_type"],
             }
         )
 
@@ -1392,16 +1400,17 @@ class TestSearchApi(ModuleStoreTestCase):
     def test_get_all_blocks_from_context(self, mock_meilisearch):
         from openedx.core.djangoapps.content.search.api import get_all_blocks_from_context
 
-        mock_index = mock_meilisearch.return_value.get_index.return_value
+        mock_index = mock_meilisearch.return_value.index.return_value
         expected_result = [
             {"usage_key": "block-v1:test+type@html+block@1"},
             {"usage_key": "block-v1:test+type@video+block@2"},
         ]
 
-        # Simulate two pages: one with results and one empty (while loop ends)
+        # A full page followed by an empty one. Paging now stops on a short
+        # page rather than on the estimated total, which is only an estimate.
         mock_index.search.side_effect = [
             {
-                "hits": expected_result,
+                "hits": expected_result * 500,
                 "estimatedTotalHits": 1200,
             },
             {
@@ -1415,14 +1424,14 @@ class TestSearchApi(ModuleStoreTestCase):
             extra_attributes_to_retrieve=["display_name"],
         ))
 
-        assert result == expected_result
+        assert result == expected_result * 500
         assert mock_index.search.call_count == 2
         mock_index.search.assert_any_call(
             "",
             {
-                "filter": ['context_key = "course-v1:TestOrg+TestCourse+TestRun"'],
                 "limit": 1000,
                 "offset": 0,
+                "filter": 'context_key = "course-v1:TestOrg+TestCourse+TestRun"',
                 "attributesToRetrieve": ["usage_key", "display_name"],
             }
         )
@@ -1430,9 +1439,9 @@ class TestSearchApi(ModuleStoreTestCase):
         mock_index.search.assert_any_call(
             "",
             {
-                "filter": ['context_key = "course-v1:TestOrg+TestCourse+TestRun"'],
                 "limit": 1000,
                 "offset": 1000,
+                "filter": 'context_key = "course-v1:TestOrg+TestCourse+TestRun"',
                 "attributesToRetrieve": ["usage_key", "display_name"],
             }
         )

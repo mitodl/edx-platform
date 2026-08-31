@@ -47,8 +47,8 @@ from openedx.core.djangoapps.content_libraries import api as lib_api
 from xmodule.modulestore.django import SignalHandler
 
 from .api import (
-    is_meilisearch_enabled,
-    only_if_meilisearch_enabled,
+    is_search_enabled,
+    only_if_search_enabled,
     reconcile_index,
     upsert_content_object_tags_index_doc,
     upsert_item_collections_index_docs,
@@ -82,7 +82,7 @@ def handle_post_migrate(sender, **kwargs):
     if sender.label != ContentSearchConfig.label:
         return
 
-    if not is_meilisearch_enabled():
+    if not is_search_enabled():
         return
 
     try:
@@ -115,7 +115,7 @@ def delete_library_search_access(content_library: ContentLibraryData, **kwargs):
 
 
 @receiver(XBLOCK_CREATED)
-@only_if_meilisearch_enabled
+@only_if_search_enabled
 def xblock_created_handler(**kwargs) -> None:
     """
     Create the index for the XBlock
@@ -132,7 +132,7 @@ def xblock_created_handler(**kwargs) -> None:
 
 
 @receiver(XBLOCK_UPDATED)
-@only_if_meilisearch_enabled
+@only_if_search_enabled
 def xblock_updated_handler(**kwargs) -> None:
     """
     Update the index for the XBlock and its children
@@ -149,7 +149,7 @@ def xblock_updated_handler(**kwargs) -> None:
 
 
 @receiver(XBLOCK_DELETED)
-@only_if_meilisearch_enabled
+@only_if_search_enabled
 def xblock_deleted_handler(**kwargs) -> None:
     """
     Delete the index for the XBlock
@@ -164,7 +164,7 @@ def xblock_deleted_handler(**kwargs) -> None:
 
 @receiver(LIBRARY_BLOCK_CREATED)
 @receiver(LIBRARY_BLOCK_UPDATED)
-@only_if_meilisearch_enabled
+@only_if_search_enabled
 def library_block_updated_handler(**kwargs) -> None:
     """
     Create or update the index for the content library block
@@ -180,7 +180,7 @@ def library_block_updated_handler(**kwargs) -> None:
 
 
 @receiver(LIBRARY_BLOCK_PUBLISHED)
-@only_if_meilisearch_enabled
+@only_if_search_enabled
 def library_block_published_handler(**kwargs) -> None:
     """
     Update the index for the content library block when its published version
@@ -206,7 +206,7 @@ def library_block_published_handler(**kwargs) -> None:
 
 
 @receiver(LIBRARY_BLOCK_DELETED)
-@only_if_meilisearch_enabled
+@only_if_search_enabled
 def library_block_deleted(**kwargs) -> None:
     """
     Delete the index for the content library block
@@ -222,7 +222,7 @@ def library_block_deleted(**kwargs) -> None:
 
 
 @receiver(CONTENT_LIBRARY_CREATED)
-@only_if_meilisearch_enabled
+@only_if_search_enabled
 def content_library_created_handler(**kwargs) -> None:
     """
     Create the index and SearchAccess for the content library
@@ -241,7 +241,7 @@ def content_library_created_handler(**kwargs) -> None:
 
 
 @receiver(CONTENT_LIBRARY_UPDATED)
-@only_if_meilisearch_enabled
+@only_if_search_enabled
 def content_library_updated_handler(**kwargs) -> None:
     """
     Update the index for the content library
@@ -263,7 +263,7 @@ def content_library_updated_handler(**kwargs) -> None:
 @receiver(LIBRARY_COLLECTION_CREATED)
 @receiver(LIBRARY_COLLECTION_DELETED)
 @receiver(LIBRARY_COLLECTION_UPDATED)
-@only_if_meilisearch_enabled
+@only_if_search_enabled
 def library_collection_updated_handler(**kwargs) -> None:
     """
     Create or update the index for the content library collection
@@ -287,7 +287,7 @@ def library_collection_updated_handler(**kwargs) -> None:
 
 
 @receiver(CONTENT_OBJECT_ASSOCIATIONS_CHANGED)
-@only_if_meilisearch_enabled
+@only_if_search_enabled
 def content_object_associations_changed_handler(**kwargs) -> None:
     """
     Update the collections/tags data in the index for the Content Object
@@ -329,7 +329,7 @@ def content_object_associations_changed_handler(**kwargs) -> None:
 
 @receiver(LIBRARY_CONTAINER_CREATED)
 @receiver(LIBRARY_CONTAINER_UPDATED)
-@only_if_meilisearch_enabled
+@only_if_search_enabled
 def library_container_updated_handler(**kwargs) -> None:
     """
     Create or update the index for the content library container
@@ -345,7 +345,7 @@ def library_container_updated_handler(**kwargs) -> None:
 
 
 @receiver(LIBRARY_CONTAINER_PUBLISHED)
-@only_if_meilisearch_enabled
+@only_if_search_enabled
 def library_container_published_handler(**kwargs) -> None:
     """
     Update the index for the content library container when its published
@@ -370,7 +370,7 @@ def library_container_published_handler(**kwargs) -> None:
 
 
 @receiver(LIBRARY_CONTAINER_DELETED)
-@only_if_meilisearch_enabled
+@only_if_search_enabled
 def library_container_deleted(**kwargs) -> None:
     """
     Delete the index for the content library container

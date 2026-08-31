@@ -14,6 +14,7 @@ from openedx_content.models_api import DraftChangeLogRecord, PublishableEntity, 
 from xblock.plugin import PluginMissingError
 
 from openedx.core.djangoapps.content.search.api import fetch_block_types, get_all_blocks_from_context
+from openedx.core.djangoapps.content.search.backends import Equals, In
 from openedx.core.djangoapps.content_libraries.api import (
     BlockLimitReachedError,
     ContentLibrary,
@@ -325,11 +326,10 @@ def preview_migration(source_key: SourceContextKey, target_key: LibraryLocatorV2
             units += 1
 
     # Gets the count of children of unsupported blocks
-    quoted_keys = ','.join(f'"{key}"' for key in unsupported_blocks)
     unsupportedBlocksChildren = fetch_block_types(
         [
-            f'context_key = "{source_key}"',
-            f'breadcrumbs.usage_key IN [{quoted_keys}]'
+            Equals("context_key", str(source_key)),
+            In("breadcrumbs.usage_key", [str(key) for key in unsupported_blocks]),
         ],
     )
     # Final unsupported blocks count

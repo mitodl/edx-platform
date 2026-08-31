@@ -69,7 +69,7 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        if not api.is_meilisearch_enabled():
+        if not api.is_search_enabled():
             raise CommandError("Meilisearch is not enabled. Please set MEILISEARCH_ENABLED to True in your settings.")
 
         if options["reset"]:

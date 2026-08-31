@@ -9,7 +9,7 @@ import logging
 from celery import shared_task
 from celery_utils.logged_task import LoggedTask
 from edx_django_utils.monitoring import set_code_owner_attribute
-from meilisearch.errors import MeilisearchError
+from .backends import SearchBackendError
 from opaque_keys.edx.keys import CourseKey, UsageKey
 from opaque_keys.edx.locator import (
     LibraryCollectionLocator,
@@ -23,7 +23,7 @@ from . import api
 log = logging.getLogger(__name__)
 
 
-@shared_task(base=LoggedTask, autoretry_for=(MeilisearchError, ConnectionError))
+@shared_task(base=LoggedTask, autoretry_for=(SearchBackendError, ConnectionError))
 @set_code_owner_attribute
 def upsert_xblock_index_doc(usage_key_str: str, recursive: bool) -> None:
     """
@@ -36,7 +36,7 @@ def upsert_xblock_index_doc(usage_key_str: str, recursive: bool) -> None:
     api.upsert_xblock_index_doc(usage_key, recursive)
 
 
-@shared_task(base=LoggedTask, autoretry_for=(MeilisearchError, ConnectionError))
+@shared_task(base=LoggedTask, autoretry_for=(SearchBackendError, ConnectionError))
 @set_code_owner_attribute
 def upsert_course_blocks_docs(course_key_str: str) -> None:
     """
@@ -49,7 +49,7 @@ def upsert_course_blocks_docs(course_key_str: str) -> None:
     api.index_course(course_key)
 
 
-@shared_task(base=LoggedTask, autoretry_for=(MeilisearchError, ConnectionError))
+@shared_task(base=LoggedTask, autoretry_for=(SearchBackendError, ConnectionError))
 @set_code_owner_attribute
 def delete_xblock_index_doc(usage_key_str: str) -> None:
     """
@@ -63,7 +63,7 @@ def delete_xblock_index_doc(usage_key_str: str) -> None:
     api.delete_index_doc(usage_key, delete_children=True)
 
 
-@shared_task(base=LoggedTask, autoretry_for=(MeilisearchError, ConnectionError))
+@shared_task(base=LoggedTask, autoretry_for=(SearchBackendError, ConnectionError))
 @set_code_owner_attribute
 def upsert_library_block_index_doc(usage_key_str: str) -> None:
     """
@@ -76,7 +76,7 @@ def upsert_library_block_index_doc(usage_key_str: str) -> None:
     api.upsert_library_block_index_doc(usage_key)
 
 
-@shared_task(base=LoggedTask, autoretry_for=(MeilisearchError, ConnectionError))
+@shared_task(base=LoggedTask, autoretry_for=(SearchBackendError, ConnectionError))
 @set_code_owner_attribute
 def delete_library_block_index_doc(usage_key_str: str) -> None:
     """
@@ -89,7 +89,7 @@ def delete_library_block_index_doc(usage_key_str: str) -> None:
     api.delete_index_doc(usage_key)
 
 
-@shared_task(base=LoggedTask, autoretry_for=(MeilisearchError, ConnectionError))
+@shared_task(base=LoggedTask, autoretry_for=(SearchBackendError, ConnectionError))
 @set_code_owner_attribute
 def update_content_library_index_docs(library_key_str: str, full_index: bool = False) -> None:
     """
@@ -103,7 +103,7 @@ def update_content_library_index_docs(library_key_str: str, full_index: bool = F
     api.upsert_content_library_index_docs(library_key, full_index=full_index)
 
 
-@shared_task(base=LoggedTask, autoretry_for=(MeilisearchError, ConnectionError))
+@shared_task(base=LoggedTask, autoretry_for=(SearchBackendError, ConnectionError))
 @set_code_owner_attribute
 def update_library_collection_index_doc(collection_key_str: str) -> None:
     """
@@ -117,7 +117,7 @@ def update_library_collection_index_doc(collection_key_str: str) -> None:
     api.upsert_library_collection_index_doc(collection_key)
 
 
-@shared_task(base=LoggedTask, autoretry_for=(MeilisearchError, ConnectionError))
+@shared_task(base=LoggedTask, autoretry_for=(SearchBackendError, ConnectionError))
 @set_code_owner_attribute
 def update_library_components_collections(collection_key_str: str) -> None:
     """
@@ -131,7 +131,7 @@ def update_library_components_collections(collection_key_str: str) -> None:
     api.update_library_components_collections(collection_key)
 
 
-@shared_task(base=LoggedTask, autoretry_for=(MeilisearchError, ConnectionError))
+@shared_task(base=LoggedTask, autoretry_for=(SearchBackendError, ConnectionError))
 @set_code_owner_attribute
 def update_library_containers_collections(collection_key_str: str) -> None:
     """
@@ -145,7 +145,7 @@ def update_library_containers_collections(collection_key_str: str) -> None:
     api.update_library_containers_collections(collection_key)
 
 
-@shared_task(base=LoggedTask, autoretry_for=(MeilisearchError, ConnectionError))
+@shared_task(base=LoggedTask, autoretry_for=(SearchBackendError, ConnectionError))
 @set_code_owner_attribute
 def update_library_container_index_doc(container_key_str: str) -> None:
     """
@@ -159,7 +159,7 @@ def update_library_container_index_doc(container_key_str: str) -> None:
     api.upsert_library_container_index_doc(container_key)
 
 
-@shared_task(base=LoggedTask, autoretry_for=(MeilisearchError, ConnectionError))
+@shared_task(base=LoggedTask, autoretry_for=(SearchBackendError, ConnectionError))
 @set_code_owner_attribute
 def delete_library_container_index_doc(container_key_str: str) -> None:
     """
@@ -172,7 +172,7 @@ def delete_library_container_index_doc(container_key_str: str) -> None:
     api.delete_index_doc(container_key)
 
 
-@shared_task(base=LoggedTask, autoretry_for=(MeilisearchError, ConnectionError))
+@shared_task(base=LoggedTask, autoretry_for=(SearchBackendError, ConnectionError))
 @set_code_owner_attribute
 def delete_course_index_docs(course_key_str: str) -> None:
     """
@@ -188,7 +188,7 @@ def delete_course_index_docs(course_key_str: str) -> None:
 
 @shared_task(
     base=LoggedTask,
-    autoretry_for=(MeilisearchError, ConnectionError),
+    autoretry_for=(SearchBackendError, ConnectionError),
     max_retries=3,
     retry_backoff=True,
 )

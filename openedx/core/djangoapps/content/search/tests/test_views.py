@@ -4,7 +4,7 @@ Tests for the Studio content search REST API.
 from __future__ import annotations
 
 import functools
-from unittest.mock import ANY, MagicMock, Mock, patch
+from unittest.mock import ANY, MagicMock, Mock, patch, PropertyMock
 
 import ddt
 from django.test import override_settings
@@ -20,6 +20,7 @@ from .test_models import StudioSearchTestMixin
 try:
     # This import errors in the lms because content.search is not an installed app there.
     from .. import api
+    from ..backends.meilisearch import MeilisearchBackend
     from ..models import SearchAccess
 except RuntimeError:
     SearchAccess = {}
@@ -44,7 +45,8 @@ def mock_meilisearch(enabled=True):
                 MEILISEARCH_PUBLIC_URL="http://meilisearch.url",
             ):
                 with patch(
-                    'openedx.core.djangoapps.content.search.api._get_meili_api_key_uid',
+                    'openedx.core.djangoapps.content.search.backends.meilisearch.MeilisearchBackend.api_key_uid',
+                    new_callable=PropertyMock,
                     return_value=MOCK_API_KEY_UID,
                 ):
                     return func(*args, **kwargs)
@@ -55,7 +57,7 @@ def mock_meilisearch(enabled=True):
 
 @ddt.ddt
 @skip_unless_cms
-@patch("openedx.core.djangoapps.content.search.api._wait_for_meili_task", new=MagicMock(return_value=None))
+@patch("openedx.core.djangoapps.content.search.backends.meilisearch.MeilisearchBackend.wait_for_task", new=MagicMock(return_value=None))
 class StudioSearchViewTest(StudioSearchTestMixin, SharedModuleStoreTestCase):
     """
     General tests for the Studio search REST API.
@@ -65,7 +67,7 @@ class StudioSearchViewTest(StudioSearchTestMixin, SharedModuleStoreTestCase):
         self.client = APIClient()
 
         # Clear the Meilisearch client to avoid side effects from other tests
-        api.clear_meilisearch_client()
+        api.clear_search_client()
 
     @mock_meilisearch(enabled=False)
     def test_studio_search_unathenticated_disabled(self):
@@ -103,7 +105,7 @@ class StudioSearchViewTest(StudioSearchTestMixin, SharedModuleStoreTestCase):
         return mock_generate_tenant_token
 
     @mock_meilisearch(enabled=True)
-    @patch('openedx.core.djangoapps.content.search.api.MeilisearchClient')
+    @patch('openedx.core.djangoapps.content.search.backends.meilisearch.MeilisearchClient')
     def test_studio_search_enabled(self, mock_search_client):
         """
         We've implement fine-grained permissions on the meilisearch content,
@@ -118,7 +120,7 @@ class StudioSearchViewTest(StudioSearchTestMixin, SharedModuleStoreTestCase):
         assert result.data["api_key"] and isinstance(result.data["api_key"], str)  # noqa: PT018
 
     @mock_meilisearch(enabled=True)
-    @patch('openedx.core.djangoapps.content.search.api.MeilisearchClient')
+    @patch('openedx.core.djangoapps.content.search.backends.meilisearch.MeilisearchClient')
     def test_studio_search_student_no_access(self, mock_search_client):
         """
         Users without access to any courses or libraries will have all documents filtered out.
@@ -131,14 +133,14 @@ class StudioSearchViewTest(StudioSearchTestMixin, SharedModuleStoreTestCase):
             api_key_uid=MOCK_API_KEY_UID,
             search_rules={
                 "studio_content": {
-                    "filter": "org IN [] OR access_id IN []",
+                    "filter": MeilisearchBackend().access_filter([], []),
                 }
             },
             expires_at=ANY,
         )
 
     @mock_meilisearch(enabled=True)
-    @patch('openedx.core.djangoapps.content.search.api.MeilisearchClient')
+    @patch('openedx.core.djangoapps.content.search.backends.meilisearch.MeilisearchClient')
     def test_studio_search_staff(self, mock_search_client):
         """
         Users with global staff access can search any document.
@@ -156,7 +158,7 @@ class StudioSearchViewTest(StudioSearchTestMixin, SharedModuleStoreTestCase):
         )
 
     @mock_meilisearch(enabled=True)
-    @patch('openedx.core.djangoapps.content.search.api.MeilisearchClient')
+    @patch('openedx.core.djangoapps.content.search.backends.meilisearch.MeilisearchClient')
     def test_studio_search_course_staff_access(self, mock_search_client):
         """
         Users with staff or instructor access to a course or library will be limited to these courses/libraries.
@@ -175,7 +177,7 @@ class StudioSearchViewTest(StudioSearchTestMixin, SharedModuleStoreTestCase):
             api_key_uid=MOCK_API_KEY_UID,
             search_rules={
                 "studio_content": {
-                    "filter": f"org IN [] OR access_id IN {expected_access_ids}",
+                    "filter": MeilisearchBackend().access_filter([], expected_access_ids),
                 }
             },
             expires_at=ANY,
@@ -186,7 +188,7 @@ class StudioSearchViewTest(StudioSearchTestMixin, SharedModuleStoreTestCase):
         'org_instr',
     )
     @mock_meilisearch(enabled=True)
-    @patch('openedx.core.djangoapps.content.search.api.MeilisearchClient')
+    @patch('openedx.core.djangoapps.content.search.backends.meilisearch.MeilisearchClient')
     def test_studio_search_org_access(self, username, mock_search_client):
         """
         Users with org access to any courses or libraries will use the org filter.
@@ -199,14 +201,14 @@ class StudioSearchViewTest(StudioSearchTestMixin, SharedModuleStoreTestCase):
             api_key_uid=MOCK_API_KEY_UID,
             search_rules={
                 "studio_content": {
-                    "filter": "org IN ['org1'] OR access_id IN []",
+                    "filter": MeilisearchBackend().access_filter(["org1"], []),
                 }
             },
             expires_at=ANY,
         )
 
     @mock_meilisearch(enabled=True)
-    @patch('openedx.core.djangoapps.content.search.api.MeilisearchClient')
+    @patch('openedx.core.djangoapps.content.search.backends.meilisearch.MeilisearchClient')
     def test_studio_search_omit_orgs(self, mock_search_client):
         """
         Grant org access to our staff user to ensure that org's access_ids are omitted from the search filter.
@@ -226,7 +228,7 @@ class StudioSearchViewTest(StudioSearchTestMixin, SharedModuleStoreTestCase):
             api_key_uid=MOCK_API_KEY_UID,
             search_rules={
                 "studio_content": {
-                    "filter": f"org IN ['org1'] OR access_id IN {expected_access_ids}",
+                    "filter": MeilisearchBackend().access_filter(["org1"], expected_access_ids),
                 }
             },
             expires_at=ANY,
@@ -235,7 +237,7 @@ class StudioSearchViewTest(StudioSearchTestMixin, SharedModuleStoreTestCase):
     @mock_meilisearch(enabled=True)
     @patch('openedx.core.djangoapps.content.search.api._get_user_orgs')
     @patch('openedx.core.djangoapps.content.search.api.get_access_ids_for_request')
-    @patch('openedx.core.djangoapps.content.search.api.MeilisearchClient')
+    @patch('openedx.core.djangoapps.content.search.backends.meilisearch.MeilisearchClient')
     def test_studio_search_limits(self, mock_search_client, mock_get_access_ids, mock_get_user_orgs):
         """
         Users with access to many courses/libraries or orgs will only be able to search content
@@ -261,7 +263,7 @@ class StudioSearchViewTest(StudioSearchTestMixin, SharedModuleStoreTestCase):
             api_key_uid=MOCK_API_KEY_UID,
             search_rules={
                 "studio_content": {
-                    "filter": f"org IN {expected_user_orgs} OR access_id IN {expected_access_ids}",
+                    "filter": MeilisearchBackend().access_filter(expected_user_orgs, expected_access_ids),
                 }
             },
             expires_at=ANY,
