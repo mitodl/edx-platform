@@ -113,9 +113,10 @@ def _check_course_access(
     `disable_access_check` override may apply (it may only override a `CountryAccessRule` block,
     never a global one).
 
-    The global check runs across every IP address and the profile country before any
+    The global check runs across the profile country and every IP address before any
     per-course `CountryAccessRule` check is considered, so a global match is never missed
-    just because an earlier signal happened to also fail a per-course rule first.
+    just because an earlier signal happened to also fail a per-course rule first. The
+    (cached) profile country goes first so a globally blocked user never pays for GeoIP.
     """
     # No-op if the country access feature is not enabled
     if not settings.EMBARGO:
@@ -128,6 +129,21 @@ def _check_course_access(
 
     if not course_is_restricted and not globally_restricted_countries:
         return _AccessCheckResult(True, False)
+
+    # The profile country is cached (see `_get_user_country_from_profile`), so it's the
+    # cheapest signal we have: check it against the global list first, and a globally
+    # blocked user costs no GeoIP lookups at all.
+    profile_country = _get_user_country_from_profile(user) if user is not None else None
+
+    if profile_country is not None and profile_country in globally_restricted_countries:
+        return _AccessCheckResult(_deny_unless_staff(
+            user, course_key,
+            (
+                "Blocking user %s from accessing course %s at %s "
+                "because the user's profile country %s is globally restricted."
+            ),
+            user.id, course_key, url, profile_country,
+        ), True)
 
     # Resolve each IP's country lazily and cache it in `ip_countries`, so a global
     # block on an early IP skips GeoIP lookups for the rest of the chain, while the
@@ -146,20 +162,6 @@ def _check_course_access(
                 ),
                 getattr(user, 'id', '<Not Authenticated>'), course_key, url, ip_address, country,
             ), True)
-
-    # The profile country is only resolved here (not alongside `ip_countries` above),
-    # so a request already decided by the IP pass doesn't pay for it needlessly.
-    profile_country = _get_user_country_from_profile(user) if user is not None else None
-
-    if profile_country is not None and profile_country in globally_restricted_countries:
-        return _AccessCheckResult(_deny_unless_staff(
-            user, course_key,
-            (
-                "Blocking user %s from accessing course %s at %s "
-                "because the user's profile country %s is globally restricted."
-            ),
-            user.id, course_key, url, profile_country,
-        ), True)
 
     if not course_is_restricted:
         return _AccessCheckResult(True, False)

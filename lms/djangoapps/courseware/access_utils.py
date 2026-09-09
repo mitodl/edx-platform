@@ -173,6 +173,9 @@ def check_embargo_access(user, course):
     through, so those still serve content to an embargoed learner. Legacy courseware
     pages are covered separately by `EmbargoMiddleware` for URLs it recognizes.
 
+    Callers should only reach for this once access is otherwise granted: a more specific
+    denial keeps its own error code, and the country lookups behind this check are not free.
+
     Returns:
         AccessResponse: Either ACCESS_GRANTED or EmbargoAccessError.
     """

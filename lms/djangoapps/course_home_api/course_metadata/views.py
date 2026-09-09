@@ -105,12 +105,16 @@ class CourseHomeMetadataView(RetrieveAPIView):
             check_if_authenticated=True,
             apply_priority_access_checks=True,
         )
-        # A country embargo (GlobalRestrictedCountry / CountryAccessRule) takes priority over
-        # any other access denial reason, and is checked here - rather than shared into
-        # check_course_access() - so it stays scoped to metadata's UI-level access flag for now.
-        embargo_access = check_embargo_access(request.user, course)
-        if not embargo_access:
-            load_access = embargo_access
+        # A country embargo (GlobalRestrictedCountry / CountryAccessRule) is checked here -
+        # rather than shared into check_course_access() - so it stays scoped to metadata's
+        # UI-level access flag for now. Only worth checking once access is otherwise granted:
+        # a more specific denial (enrollment_required, authentication_required) keeps its own
+        # error code, and we skip the embargo check's country lookups on requests that are
+        # already blocked.
+        if load_access:
+            embargo_access = check_embargo_access(request.user, course)
+            if not embargo_access:
+                load_access = embargo_access
 
         _, request.user = setup_masquerade(
             request,

@@ -259,6 +259,20 @@ class CourseHomeMetadataTests(BaseCourseHomeTests):
         self._assert_course_access_response(response, False, 'embargo')
 
     @override_settings(EMBARGO=True)
+    def test_embargo_does_not_mask_a_more_specific_denial(self):
+        """
+        An unenrolled learner in a restricted country keeps `enrollment_required` - the
+        embargo check only runs once access is otherwise granted, so the learner is told
+        the thing they can act on first, and blocked requests skip the country lookups.
+        """
+        GlobalRestrictedCountry.objects.create(country=Country.objects.create(country='CU'))
+
+        with patch('openedx.core.djangoapps.embargo.api.country_code_from_ip', return_value='CU'):
+            response = self.client.get(self.url, HTTP_X_FORWARDED_FOR='1.2.3.4')
+
+        self._assert_course_access_response(response, False, 'enrollment_required')
+
+    @override_settings(EMBARGO=True)
     def test_embargo_staff_bypass(self):
         """ Course staff should still get access even when their country is globally restricted. """
         CourseInstructorRole(self.course.id).add_users(self.user)

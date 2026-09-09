@@ -469,8 +469,10 @@ class EmbargoMessageUrlApiTests(UrlResetMixin, ModuleStoreTestCase):
         # No restrictions for the course
         url_path = embargo_api.message_url_path(self.course.id, access_point)
 
-        # Use a default path
-        assert url_path == '/embargo/blocked-message/courseware/default/'
+        # Use a default path - the default for the access point the user was blocked at.
+        # A course blocked only by `GlobalRestrictedCountry` has no `RestrictedCourse` row,
+        # so this fallback is what an embargoed learner actually sees.
+        assert url_path == f'/embargo/blocked-message/{access_point}/default/'
 
     def test_invalid_access_point(self):
         with pytest.raises(InvalidAccessPoint):
