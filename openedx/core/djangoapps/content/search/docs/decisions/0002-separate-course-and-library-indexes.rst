@@ -43,11 +43,16 @@ Both indexes use the same settings. Every write is routed by document type or by
 the learning context of its key. Rebuild locks and temporary ``_new`` indexes
 are per index.
 
+Every modulestore block is indexed as a ``course_block`` document, including
+course blocks that link to upstream library content, so those stay in the
+course index.
+
 ``GET /api/content_search/v2/studio/`` returns ``course_index_name`` and
 ``library_index_name``, and one tenant token whose search rules cover both
-indexes with the same access filter. The frontend uses a multi-index search for
-views that span courses and libraries. ``index_name`` is still returned (equal
-to ``course_index_name``) for one release, for frontends that predate the split.
+indexes with the same access filter. Each Studio search surface already
+searches either course content or library content, never both, so each one
+picks the matching index. ``index_name`` is still returned (equal to
+``course_index_name``) for one release, for frontends that predate the split.
 
 
 Upgrading
@@ -73,6 +78,7 @@ Consequences
 ************
 
 * Library writes no longer pay for the size of the course index.
-* Searches that span courses and libraries need a multi-index search request.
+* A future search across courses and libraries together would need a
+  multi-index search request.
 * The Meilisearch API key used by Studio must be allowed to manage both index
   names (and their ``_new`` temporary indexes).
