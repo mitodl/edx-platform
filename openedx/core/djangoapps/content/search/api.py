@@ -673,6 +673,8 @@ def rebuild_index(  # pylint: disable=too-many-statements
             _apply_index_settings(index_name, wait=False)
 
         ############## Libraries ##############
+        # MeilisearchError from add_documents is not caught below: an incomplete library index must not be
+        # swapped in or followed by the course index cleanup, and the Celery task needs the error to retry.
         status_cb("Indexing libraries...")
 
         def index_library(lib_key: LibraryLocatorV2) -> list:
@@ -692,7 +694,7 @@ def rebuild_index(  # pylint: disable=too-many-statements
                 try:
                     # Add all the docs in this library at once (usually faster than adding one at a time):
                     _wait_for_meili_task(client.index(index_name).add_documents(docs))
-                except (TypeError, KeyError, MeilisearchError) as err:
+                except (TypeError, KeyError) as err:
                     status_cb(f"Error indexing library {lib_key}: {err}")
             return docs
 
@@ -713,7 +715,7 @@ def rebuild_index(  # pylint: disable=too-many-statements
                 try:
                     # Add docs in batch of 100 at once (usually faster than adding one at a time):
                     _wait_for_meili_task(client.index(index_name).add_documents(docs))
-                except (TypeError, KeyError, MeilisearchError) as err:
+                except (TypeError, KeyError) as err:
                     status_cb(f"Error indexing collection batch {p}: {err}")
             return num_done
 
@@ -744,7 +746,7 @@ def rebuild_index(  # pylint: disable=too-many-statements
                 try:
                     # Add docs in batch of 100 at once (usually faster than adding one at a time):
                     _wait_for_meili_task(client.index(index_name).add_documents(docs))
-                except (TypeError, KeyError, MeilisearchError) as err:
+                except (TypeError, KeyError) as err:
                     status_cb(f"Error indexing container batch {p}: {err}")
             return num_done
 

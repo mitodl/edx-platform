@@ -12,7 +12,7 @@ import ddt
 import pytest
 from django.test import override_settings
 from freezegun import freeze_time
-from meilisearch.errors import MeilisearchApiError
+from meilisearch.errors import MeilisearchApiError, MeilisearchError
 from opaque_keys.edx.keys import CourseKey, UsageKey
 from opaque_keys.edx.locator import LibraryCollectionLocator, LibraryContainerLocator, LibraryLocatorV2
 from openedx_content import api as content_api
@@ -434,6 +434,20 @@ class TestSearchApi(ModuleStoreTestCase):
         course_index = indexes[api.STUDIO_COURSE_INDEX_NAME]
         course_index.add_documents.assert_not_called()
         course_index.delete_documents.assert_called_once_with(filter='type != "course_block"')
+
+    @override_settings(MEILISEARCH_ENABLED=True)
+    def test_reindex_library_write_error_aborts_before_swap(self, mock_meilisearch) -> None:
+        """
+        A failed library write must not swap in the partial library index or clean up the course index.
+        """
+        indexes = self._mock_indexes(mock_meilisearch)
+        indexes[api.STUDIO_LIBRARY_INDEX_NAME + "_new"].add_documents.side_effect = MeilisearchError("write failed")
+
+        with pytest.raises(MeilisearchError):
+            api.rebuild_index(include_courses=False)
+
+        mock_meilisearch.return_value.swap_indexes.assert_not_called()
+        indexes[api.STUDIO_COURSE_INDEX_NAME].delete_documents.assert_not_called()
 
     @override_settings(MEILISEARCH_ENABLED=True)
     def test_reindex_meilisearch_incremental(self, mock_meilisearch) -> None:
