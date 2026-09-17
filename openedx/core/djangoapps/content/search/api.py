@@ -470,7 +470,7 @@ def _detect_index_drift(index_name: str) -> IndexDrift:
     )
 
 
-def reconcile_index(
+def reconcile_indexes(
     status_cb: Callable[[str], None] | None = None, warn_cb: Callable[[str], None] | None = None
 ) -> None:  # noqa: E501
     """
@@ -491,17 +491,22 @@ def reconcile_index(
         warn_cb = log.warning
 
     for index_name in (STUDIO_COURSE_INDEX_NAME, STUDIO_LIBRARY_INDEX_NAME):
-        _reconcile_single_index(index_name, status_cb, warn_cb)
+        reconcile_index(index_name, status_cb, warn_cb)
 
 
-def _reconcile_single_index(
+def reconcile_index(
     index_name: str,
-    status_cb: Callable[[str], None],
-    warn_cb: Callable[[str], None],
+    status_cb: Callable[[str], None] | None = None,
+    warn_cb: Callable[[str], None] | None = None,
 ) -> None:
     """
-    Reconcile the state of one Studio Meilisearch index. See reconcile_index().
+    Reconcile the state of one Studio Meilisearch index. See reconcile_indexes().
     """
+    if status_cb is None:
+        status_cb = log.info
+    if warn_cb is None:
+        warn_cb = log.warning
+
     if index_name == STUDIO_LIBRARY_INDEX_NAME:
         populate_cmd = "./manage.py cms reindex_studio --libraries-only"
     else:
@@ -572,10 +577,10 @@ def init_index(status_cb: Callable[[str], None] | None = None, warn_cb: Callable
 
     Initialize the Meilisearch index, creating it and configuring it if it doesn't exist.
 
-    This is a compatibility wrapper around reconcile_index().
+    This is a compatibility wrapper around reconcile_indexes().
     """
     log.warning("init_index is deprecated as of Verawood and will be removed in the future release.")
-    reconcile_index(status_cb=status_cb, warn_cb=warn_cb)
+    reconcile_indexes(status_cb=status_cb, warn_cb=warn_cb)
 
 
 def index_course(

@@ -19,7 +19,7 @@ try:
         IndexDrift,
         _apply_index_settings,
         _detect_index_drift,
-        reconcile_index,
+        reconcile_indexes,
     )
     from ..apps import ContentSearchConfig
     from ..handlers import handle_post_migrate
@@ -350,19 +350,19 @@ class TestApplyIndexSettings(TestCase):
 @patch("openedx.core.djangoapps.content.search.api._wait_for_meili_task", new=MagicMock(return_value=None))
 @patch("openedx.core.djangoapps.content.search.api.MeilisearchClient")
 class TestReconcileIndex(TestCase):
-    """Tests for reconcile_index()."""
+    """Tests for reconcile_indexes()."""
 
     def setUp(self):
         super().setUp()
         api.clear_meilisearch_client()
 
-    @patch("openedx.core.djangoapps.content.search.api._reconcile_single_index")
+    @patch("openedx.core.djangoapps.content.search.api.reconcile_index")
     def test_reconciles_both_indexes(self, mock_reconcile_single, mock_meilisearch):
         """Both the course index and the library index are reconciled."""
         status_cb = Mock()
         warn_cb = Mock()
 
-        reconcile_index(status_cb=status_cb, warn_cb=warn_cb)
+        reconcile_indexes(status_cb=status_cb, warn_cb=warn_cb)
 
         assert mock_reconcile_single.call_args_list == [
             call(api.STUDIO_COURSE_INDEX_NAME, status_cb, warn_cb),
@@ -391,7 +391,7 @@ class TestReconcileIndex(TestCase):
         )
         status_cb = Mock()
 
-        reconcile_index(status_cb=status_cb)
+        reconcile_indexes(status_cb=status_cb)
 
         mock_reset.assert_called_once_with(api.STUDIO_LIBRARY_INDEX_NAME, status_cb)
         status_cb.assert_any_call(
@@ -406,7 +406,7 @@ class TestReconcileIndex(TestCase):
         mock_drift.return_value = IndexDrift(exists=False)
         status_cb = Mock()
 
-        api._reconcile_single_index(api.STUDIO_COURSE_INDEX_NAME, status_cb, Mock())
+        api.reconcile_index(api.STUDIO_COURSE_INDEX_NAME, status_cb, Mock())
 
         mock_reset.assert_called_once_with(api.STUDIO_COURSE_INDEX_NAME, status_cb)
         status_cb.assert_any_call(
@@ -428,7 +428,7 @@ class TestReconcileIndex(TestCase):
         )
         status_cb = Mock()
 
-        api._reconcile_single_index(api.STUDIO_COURSE_INDEX_NAME, status_cb, Mock())
+        api.reconcile_index(api.STUDIO_COURSE_INDEX_NAME, status_cb, Mock())
 
         status_cb.assert_any_call(
             f"Index '{api.STUDIO_COURSE_INDEX_NAME}' exists and is correctly configured but empty. "
@@ -451,7 +451,7 @@ class TestReconcileIndex(TestCase):
         )
         status_cb = Mock()
 
-        api._reconcile_single_index(api.STUDIO_LIBRARY_INDEX_NAME, status_cb, Mock())
+        api.reconcile_index(api.STUDIO_LIBRARY_INDEX_NAME, status_cb, Mock())
 
         mock_apply.assert_called_once_with(api.STUDIO_LIBRARY_INDEX_NAME, wait=True, status_cb=status_cb)
         status_cb.assert_any_call(
@@ -474,7 +474,7 @@ class TestReconcileIndex(TestCase):
         )
         warn_cb = Mock()
 
-        api._reconcile_single_index(api.STUDIO_COURSE_INDEX_NAME, Mock(), warn_cb)
+        api.reconcile_index(api.STUDIO_COURSE_INDEX_NAME, Mock(), warn_cb)
 
         mock_reset.assert_called_once()
         warn_cb.assert_any_call(
@@ -496,7 +496,7 @@ class TestReconcileIndex(TestCase):
         )
         status_cb = Mock()
 
-        api._reconcile_single_index(api.STUDIO_COURSE_INDEX_NAME, status_cb, Mock())
+        api.reconcile_index(api.STUDIO_COURSE_INDEX_NAME, status_cb, Mock())
 
         status_cb.assert_any_call(
             f"Index '{api.STUDIO_COURSE_INDEX_NAME}' is populated and correctly configured. No action needed."
@@ -519,7 +519,7 @@ class TestReconcileIndex(TestCase):
         status_cb = Mock()
         warn_cb = Mock()
 
-        api._reconcile_single_index(api.STUDIO_COURSE_INDEX_NAME, status_cb, warn_cb)
+        api.reconcile_index(api.STUDIO_COURSE_INDEX_NAME, status_cb, warn_cb)
 
         mock_apply.assert_called_once_with(api.STUDIO_COURSE_INDEX_NAME, wait=True, status_cb=status_cb)
         # Check that drifted fields are logged
@@ -545,7 +545,7 @@ class TestReconcileIndex(TestCase):
         )
         warn_cb = Mock()
 
-        api._reconcile_single_index(api.STUDIO_LIBRARY_INDEX_NAME, Mock(), warn_cb)
+        api.reconcile_index(api.STUDIO_LIBRARY_INDEX_NAME, Mock(), warn_cb)
 
         mock_reset.assert_called_once()
         # Should warn about data loss
@@ -556,10 +556,10 @@ class TestReconcileIndex(TestCase):
 
     @override_settings(MEILISEARCH_ENABLED=False)
     def test_meilisearch_disabled(self, mock_meilisearch):
-        """When Meilisearch is disabled, reconcile_index raises RuntimeError (from client)."""
+        """When Meilisearch is disabled, reconcile_indexes raises RuntimeError (from client)."""
         api.clear_meilisearch_client()
         with pytest.raises(RuntimeError):
-            reconcile_index()
+            reconcile_indexes()
 
 
 @skip_unless_cms
@@ -573,9 +573,9 @@ class TestHandlePostMigrate(TestCase):
         super().setUp()
         api.clear_meilisearch_client()
 
-    @patch("openedx.core.djangoapps.content.search.handlers.reconcile_index")
+    @patch("openedx.core.djangoapps.content.search.handlers.reconcile_indexes")
     def test_calls_reconcile_for_search_app(self, mock_reconcile, mock_meilisearch):
-        """Handler calls reconcile_index when sender is the search app."""
+        """Handler calls reconcile_indexes when sender is the search app."""
         sender = Mock()
         sender.label = ContentSearchConfig.label
 
@@ -583,7 +583,7 @@ class TestHandlePostMigrate(TestCase):
 
         mock_reconcile.assert_called_once()
 
-    @patch("openedx.core.djangoapps.content.search.handlers.reconcile_index")
+    @patch("openedx.core.djangoapps.content.search.handlers.reconcile_indexes")
     def test_skips_wrong_sender(self, mock_reconcile, mock_meilisearch):
         """Handler does nothing when sender is a different app."""
         sender = Mock()
@@ -594,7 +594,7 @@ class TestHandlePostMigrate(TestCase):
         mock_reconcile.assert_not_called()
 
     @override_settings(MEILISEARCH_ENABLED=False)
-    @patch("openedx.core.djangoapps.content.search.handlers.reconcile_index")
+    @patch("openedx.core.djangoapps.content.search.handlers.reconcile_indexes")
     def test_skips_when_disabled(self, mock_reconcile, mock_meilisearch):
         """Handler does nothing when Meilisearch is disabled."""
         sender = Mock()
@@ -604,7 +604,7 @@ class TestHandlePostMigrate(TestCase):
 
         mock_reconcile.assert_not_called()
 
-    @patch("openedx.core.djangoapps.content.search.handlers.reconcile_index")
+    @patch("openedx.core.djangoapps.content.search.handlers.reconcile_indexes")
     def test_catches_connection_error(self, mock_reconcile, mock_meilisearch):
         """Handler catches ConnectionError and logs warning."""
         sender = Mock()
@@ -614,7 +614,7 @@ class TestHandlePostMigrate(TestCase):
         # Should not raise
         handle_post_migrate(sender=sender)
 
-    @patch("openedx.core.djangoapps.content.search.handlers.reconcile_index")
+    @patch("openedx.core.djangoapps.content.search.handlers.reconcile_indexes")
     def test_catches_meilisearch_error(self, mock_reconcile, mock_meilisearch):
         """Handler catches MeilisearchError and logs warning."""
         sender = Mock()
@@ -624,7 +624,7 @@ class TestHandlePostMigrate(TestCase):
         # Should not raise
         handle_post_migrate(sender=sender)
 
-    @patch("openedx.core.djangoapps.content.search.handlers.reconcile_index")
+    @patch("openedx.core.djangoapps.content.search.handlers.reconcile_indexes")
     def test_catches_generic_exception(self, mock_reconcile, mock_meilisearch):
         """Handler catches unexpected exceptions and logs warning."""
         sender = Mock()
@@ -656,9 +656,9 @@ class TestInitIndexBackwardCompat(TestCase):
         super().setUp()
         api.clear_meilisearch_client()
 
-    @patch("openedx.core.djangoapps.content.search.api.reconcile_index")
+    @patch("openedx.core.djangoapps.content.search.api.reconcile_indexes")
     def test_init_index_delegates_to_reconcile(self, mock_reconcile, mock_meilisearch):
-        """init_index() should delegate to reconcile_index()."""
+        """init_index() should delegate to reconcile_indexes()."""
         status_cb = Mock()
         warn_cb = Mock()
 
