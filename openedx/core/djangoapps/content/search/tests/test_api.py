@@ -4,12 +4,14 @@ Tests for the Studio content search API.
 from __future__ import annotations
 
 import copy
+import importlib
 from collections import defaultdict
 from datetime import UTC, datetime
 from unittest.mock import MagicMock, Mock, call, patch
 
 import ddt
 import pytest
+from django.apps import apps
 from django.test import override_settings
 from freezegun import freeze_time
 from meilisearch.errors import MeilisearchApiError, MeilisearchError
@@ -448,6 +450,20 @@ class TestSearchApi(ModuleStoreTestCase):
 
         mock_meilisearch.return_value.swap_indexes.assert_not_called()
         indexes[api.STUDIO_COURSE_INDEX_NAME].delete_documents.assert_not_called()
+
+    def test_migration_clears_library_incremental_checkpoints(self, mock_meilisearch) -> None:
+        """
+        Library checkpoints from before the index split are dropped so incremental rebuilds reindex those libraries.
+        """
+        migration = importlib.import_module(
+            "openedx.core.djangoapps.content.search.migrations.0003_clear_library_incremental_index_checkpoints"
+        )
+        IncrementalIndexCompleted.objects.create(context_key=self.library.key)
+        IncrementalIndexCompleted.objects.create(context_key=self.course.id)
+
+        migration.clear_library_checkpoints(apps, None)
+
+        assert list(IncrementalIndexCompleted.objects.values_list("context_key", flat=True)) == [self.course.id]
 
     @override_settings(MEILISEARCH_ENABLED=True)
     def test_reindex_meilisearch_incremental(self, mock_meilisearch) -> None:
