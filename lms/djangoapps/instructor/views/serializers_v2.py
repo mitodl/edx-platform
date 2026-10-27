@@ -33,15 +33,12 @@ from lms.djangoapps.discussion.django_comment_client.utils import has_forum_acce
 from lms.djangoapps.grades.api import is_writable_gradebook_enabled
 from lms.djangoapps.instructor import permissions
 from lms.djangoapps.instructor.access import FORUM_ROLES, ROLES
-from lms.djangoapps.instructor.views.instructor_dashboard import (
-    get_analytics_dashboard_message,
-    proctored_exams_enabled,
-)
+from lms.djangoapps.instructor.views.instructor_dashboard import get_analytics_dashboard_message
 from openedx.core.djangoapps.django_comment_common.models import FORUM_ROLE_ADMINISTRATOR
 from openedx.core.djangoapps.site_configuration import helpers as configuration_helpers
 from xmodule.modulestore.django import modulestore
 
-from .tools import DashboardError, get_student_from_identifier, parse_datetime
+from .tools import DashboardError, get_student_from_identifier, parse_datetime, proctored_exams_enabled
 
 User = get_user_model()
 log = logging.getLogger(__name__)

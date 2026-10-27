@@ -113,7 +113,6 @@ from lms.djangoapps.instructor.enrollment import (
 )
 from lms.djangoapps.instructor.ora import get_open_response_assessment_list, get_ora_summary
 from lms.djangoapps.instructor.views.api import _display_unit, get_student_from_identifier
-from lms.djangoapps.instructor.views.instructor_dashboard import proctored_exams_enabled
 from lms.djangoapps.instructor.views.instructor_task_helpers import extract_task_features
 from lms.djangoapps.instructor_analytics import basic as instructor_analytics_basic
 from lms.djangoapps.instructor_analytics import csvs as instructor_analytics_csvs
@@ -169,7 +168,14 @@ from .serializers_v2 import (
     UnitExtensionSerializer,
     derive_exam_type,
 )
-from .tools import find_unit, get_units_with_due_date, keep_field_private, set_due_date_extension, title_or_url
+from .tools import (
+    find_unit,
+    get_units_with_due_date,
+    keep_field_private,
+    proctored_exams_enabled,
+    set_due_date_extension,
+    title_or_url,
+)
 
 User = get_user_model()
 log = logging.getLogger(__name__)

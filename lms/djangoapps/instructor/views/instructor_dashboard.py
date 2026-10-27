@@ -60,7 +60,7 @@ from xmodule.tabs import CourseTab  # pylint: disable=wrong-import-order
 
 from .. import permissions
 from ..toggles import data_download_v2_is_enabled, legacy_instructor_dashboard
-from .tools import get_units_with_due_date, title_or_url
+from .tools import get_units_with_due_date, proctored_exams_enabled, title_or_url
 
 log = logging.getLogger(__name__)
 
@@ -653,11 +653,6 @@ def _section_extensions(course):
         ),
     }
     return section_data
-
-
-def proctored_exams_enabled(course):
-    """ Whether the proctored exam results report is available for the course """
-    return settings.ENABLE_SPECIAL_EXAMS and course.enable_proctored_exams
 
 
 def _section_data_download(course, access):

@@ -67,11 +67,11 @@ class CourseMetadataViewTest(SharedModuleStoreTestCase, MasqueradeMixin):
             self_paced=False,
             enable_proctored_exams=True,
         )
-        cls.proctored_course = CourseFactory.create(
+        cls.other_course = CourseFactory.create(
             org='edX',
             number='Proctored',
             run='2024',
-            display_name='Demonstration Proctored Course',
+            display_name='Demonstration Other Course',
         )
 
         cls.course_key = cls.course.id
@@ -85,7 +85,7 @@ class CourseMetadataViewTest(SharedModuleStoreTestCase, MasqueradeMixin):
         self.django_staff_user = UserFactory.create(is_staff=True)
         self.data_researcher = UserFactory.create()
         CourseDataResearcherRole(self.course_key).add_users(self.data_researcher)
-        CourseInstructorRole(self.proctored_course.id).add_users(self.instructor)
+        CourseInstructorRole(self.other_course.id).add_users(self.instructor)
         self.student = UserFactory.create()
 
         # Create some enrollments for testing
@@ -109,7 +109,7 @@ class CourseMetadataViewTest(SharedModuleStoreTestCase, MasqueradeMixin):
         )
         CourseEnrollmentFactory.create(
             user=UserFactory.create(),
-            course_id=self.proctored_course.id,
+            course_id=self.other_course.id,
             mode='verified',
             is_active=True
         )
@@ -602,7 +602,7 @@ class CourseMetadataViewTest(SharedModuleStoreTestCase, MasqueradeMixin):
     @ddt.data(
         (True, 'course', True),
         (False, 'course', False),
-        (True, 'proctored_course', False),
+        (True, 'other_course', False),
     )
     @ddt.unpack
     def test_proctored_exams_enabled(self, enable_special_exams, course_attr, expected):
