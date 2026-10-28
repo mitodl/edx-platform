@@ -497,7 +497,11 @@ LOG_POSTPAY_CALLBACKS = True
 # .. toggle_implementation: DjangoSetting
 # .. toggle_default: False
 # .. toggle_description: Set to True to enable custom certificate templates which are configured via Django admin.
-# .. toggle_warning: None
+#   Templates are rendered with Mako.
+# .. toggle_warning: Mako templates can run arbitrary Python on the LMS server. Any user who can add or change a
+#   certificate template in Django admin (the certificates.add_certificatetemplate and
+#   certificates.change_certificatetemplate permissions) can run code as the LMS process. Only grant those permissions
+#   to users you would trust with shell access to the LMS.
 # .. toggle_use_cases: open_edx
 # .. toggle_creation_date: 2015-08-13
 # .. toggle_target_removal_date: None
