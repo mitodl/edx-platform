@@ -291,6 +291,7 @@ constraint-dependencies = [
     "astroid==4.0.4",
     "edx-enterprise==8.17.0",
     "djangorestframework<3.18",
+    "openedx-forum<0.6.0",
 ]
 [tool.edx_lint]
 uv_constraints = [
@@ -408,6 +409,11 @@ uv_constraints = [
     # item index, which breaks the error response shape of several write endpoints.
     # Issue for unpinning: https://github.com/openedx/openedx-platform/issues/39048
     "djangorestframework<3.18",
+    # Date: 2026-10-28
+    # openedx-forum 0.6.0 adds the ModerationAuditLog model, which has no PII annotation
+    # and fails `make pii_check`. It also isn't cleared on user retirement.
+    # Issue for unpinning: https://github.com/openedx/forum/issues/301
+    "openedx-forum<0.6.0",
 ]
 
 [tool.setuptools]
